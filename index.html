@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIP-Postgrado | Iniciar Sesión</title>
+    
+    <!-- LINK A TU ESTILO CSS PERSONALIZADO -->
+    <!-- Cambia 'css/tu_estilo.css' por la ruta real de tu archivo de estilos -->
+    <link rel="stylesheet" href="css/tu_estilo.css"> 
+</head>
+<body>
+
+<div class="login-container">
+    <div class="login-box">
+        
+        <div class="login-header">
+            <h2>SIP-Postgrado</h2>
+            <p>Sistema Integrado de Control de Estudios</p>
+        </div>
+
+        <!-- Alertas de Error devueltas por el Backend -->
+        <?php if (isset($_GET['error'])): ?>
+            <div class="alert-error">
+                <p>⚠️ <?= htmlspecialchars($_GET['error']); ?></p>
+            </div>
+        <?php endif; ?>
+
+        <!-- Formulario de Envío de Datos -->
+        <form action="procesar_login.php" method="POST" autocomplete="off">
+            
+            <!-- Grupo 1: Tipo de Identificación -->
+            <div class="input-group">
+                <label for="tipo_documento">Tipo de Documento</label>
+                <select name="tipo_documento" id="tipo_documento" required>
+                    <option value="V">V - Venezolano</option>
+                    <option value="E">E - Extranjero Residente</option>
+                    <option value="P">P - Pasaporte Internacional</option>
+                </select>
+            </div>
+
+            <!-- Grupo 2: Número de Identidad (Cambia dinámicamente con JS) -->
+            <div class="input-group">
+                <label for="numero_documento">Número de Identidad</label>
+                <input type="text" name="numero_documento" id="numero_documento" placeholder="Ej: 12345678" required>
+            </div>
+
+            <!-- Grupo 3: Clave de Acceso -->
+            <div class="input-group">
+                <label for="password">Contraseña</label>
+                <input type="password" name="password" id="password" placeholder="••••••••" required>
+            </div>
+
+            <!-- Botón de Acción Principal -->
+            <button type="submit" class="btn-login">Ingresar al Sistema</button>
+            
+        </form>
+    </div>
+</div>
+
+<!-- LÓGICA JAVASCRIPT: Validación en tiempo real en el Frontend -->
+<script>
+document.getElementById('tipo_documento').addEventListener('change', function() {
+    const inputDoc = document.getElementById('numero_documento');
+    
+    if (this.value === 'P') {
+        // Configuración para Pasaporte Internacional
+        inputDoc.type = 'text';
+        inputDoc.placeholder = "Ej: PAS987654";
+        inputDoc.pattern = "[a-zA-Z0-9]+"; // Permite letras y números
+        inputDoc.title = "El pasaporte debe contener solo letras y números.";
+    } else {
+        // Configuración para Cédula (V o E)
+        inputDoc.type = 'text';
+        inputDoc.placeholder = "Ej: 12345678";
+        inputDoc.pattern = "[0-9]+"; // Fuerza a que sean solo números
+        inputDoc.title = "La cédula debe contener solo números.";
+    }
+});
+</script>
+
+</body>
+</html>
