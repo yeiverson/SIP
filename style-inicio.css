@@ -1,0 +1,294 @@
+:root {
+    --unefa-blue: #001a57;
+    --unefa-light-blue: #002b80;
+    --white: #ffffff;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Montserrat', sans-serif;
+}
+
+body, html {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+body {
+    background: url('imagenes/FACHADA\ AZULADA.png') no-repeat center center fixed;
+    background-size: cover;
+}
+
+.background-overlay {
+    background: rgba(0, 0, 0, 0.45);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- NAVBAR --- */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 5%;
+    flex-shrink: 0;
+}
+
+.logo-img {
+    height: 48px;
+    width: auto;
+}
+
+.nav-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.nav-buttons .btn-outline {
+    color: white;
+    text-decoration: none;
+    border: 1.5px solid rgba(255, 255, 255, 0.65);
+    padding: 7px 20px;
+    border-radius: 25px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: background 0.25s;
+}
+
+.nav-buttons .btn-outline:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.nav-buttons .btn-filled {
+    background: var(--unefa-blue);
+    color: white;
+    text-decoration: none;
+    padding: 7px 20px;
+    border-radius: 25px;
+    font-weight: 700;
+    font-size: 0.82rem;
+    transition: background 0.25s;
+}
+
+.nav-buttons .btn-filled:hover {
+    background: var(--unefa-light-blue);
+}
+
+/* --- ÁREA PRINCIPAL --- */
+.content-wrapper {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 6%;
+    gap: 40px;
+    overflow: hidden;
+}
+
+/* --- ESLOGAN --- */
+.hero-text {
+    max-width: 420px;
+    flex-shrink: 1;
+}
+
+.hero-tag {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    padding: 4px 13px;
+    border-radius: 20px;
+    margin-bottom: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.hero-text h2 {
+    color: white;
+    font-size: 1.9rem;
+    line-height: 1.15;
+    font-weight: 800;
+    text-shadow: 2px 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.hero-divider {
+    width: 34px;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.35);
+    border-radius: 2px;
+    margin: 12px 0;
+}
+
+.hero-sub {
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.8rem;
+    line-height: 1.6;
+    font-weight: 400;
+}
+
+/* --- TARJETA DE LOGIN --- */
+.login-card {
+    background: var(--white);
+    width: 100%;
+    max-width: 360px;
+    max-height: calc(100vh - 100px);
+    padding: 24px 28px 20px;
+    border-radius: 18px;
+    box-shadow: 0 16px 45px rgba(0, 0, 0, 0.4);
+    flex-shrink: 0;
+    overflow-y: auto;
+}
+
+.login-card h3 {
+    font-size: 1.3rem;
+    color: #111;
+    font-weight: 700;
+    margin-bottom: 4px;
+    letter-spacing: -0.5px;
+}
+
+.subtitle {
+    color: #999;
+    font-size: 0.72rem;
+    margin-bottom: 16px;
+    line-height: 1.45;
+}
+
+/* --- FORMULARIO --- */
+.input-group {
+    margin-bottom: 11px;
+}
+
+.input-group label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.65rem;
+    margin-bottom: 4px;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.input-group input,
+.input-group select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid #e8e8e8;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-family: 'Montserrat', sans-serif;
+    background-color: #fafafa;
+    color: #333;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.input-group input:focus,
+.input-group select:focus {
+    border-color: var(--unefa-blue);
+    background: #fff;
+}
+
+.form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.63rem;
+    margin: 10px 0 14px;
+    font-weight: 600;
+}
+
+.remember-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #555;
+    cursor: pointer;
+}
+
+.remember-label input {
+    accent-color: var(--unefa-blue);
+}
+
+.form-footer a {
+    color: var(--unefa-light-blue);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.form-footer a:hover {
+    text-decoration: underline;
+}
+
+.btn-login {
+    width: 100%;
+    background: var(--unefa-blue);
+    color: white;
+    border: none;
+    padding: 11px;
+    border-radius: 25px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    font-family: 'Montserrat', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    transition: background 0.25s ease;
+}
+
+.btn-login:hover {
+    background: var(--unefa-light-blue);
+}
+
+/* --- PIE DE TARJETA --- */
+.card-footer {
+    margin-top: 14px;
+    text-align: center;
+    font-size: 0.56rem;
+    color: #bbb;
+    border-top: 1px solid #f0f0f0;
+    padding-top: 12px;
+}
+
+.footer-logos {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-top: 8px;
+}
+
+.footer-logos img {
+    height: 22px;
+    width: auto;
+    filter: grayscale(20%) opacity(0.75);
+}
+
+/* --- RESPONSIVO --- */
+@media (max-width: 1024px) {
+    .hero-text h2 { font-size: 1.6rem; }
+    .login-card { max-width: 320px; }
+}
+
+@media (max-width: 850px) {
+    body, html { overflow: auto; }
+    .background-overlay { height: auto; min-height: 100vh; }
+    .content-wrapper {
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 20px 5% 30px;
+        overflow: visible;
+    }
+    .hero-text { display: none; }
+    .login-card {
+        max-width: 100%;
+        max-height: none;
+    }
+}
