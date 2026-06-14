@@ -198,9 +198,12 @@ function validarEmailBasico(valor) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(valor).trim());
 }
 
-function validarCedulaBasico(valor) {
+function validarCedulaBasico(valor, tipoDoc) {
+    if (tipoDoc === 'P') {
+        return /^[A-Za-z0-9]{4,20}$/.test(String(valor));
+    }
     const solo = String(valor).replace(/\D/g, '');
-    return solo.length >= 7 && solo.length <= 8 && /^\d+$/.test(solo);
+    return solo.length >= 7 && solo.length <= 10 && /^\d+$/.test(solo);
 }
 
 function validarPasswordComoPhp(valor) {
@@ -231,8 +234,12 @@ function initRegistroAjax(form) {
             return;
         }
 
-        if (!validarCedulaBasico(cedula)) {
-            alert('La cédula debe tener entre 7 y 8 dígitos numéricos.');
+        if (!validarCedulaBasico(cedula, tipoDoc)) {
+            if (tipoDoc === 'P') {
+                alert('El pasaporte debe tener entre 4 y 20 caracteres alfanuméricos.');
+            } else {
+                alert('La cédula debe tener entre 7 y 10 dígitos numéricos.');
+            }
             return;
         }
 

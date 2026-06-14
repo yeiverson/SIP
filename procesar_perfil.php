@@ -6,12 +6,12 @@ require_once 'config.php';
 require_once 'procesar.php';
 require_once __DIR__ . '/includes/queries_usuarios.php';
 
-if (empty($_SESSION['user_id'])) {
-    header('Location: Inicio.php');
+if (empty($_SESSION['usuario_id']) && empty($_SESSION['user_id'])) {
+    header('Location: index.php');
     exit;
 }
 
-$userId = (int) $_SESSION['user_id'];
+$userId = (int) ($_SESSION['usuario_id'] ?? $_SESSION['user_id'] ?? 0);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: llenado_de_perfil.php');
@@ -326,7 +326,7 @@ try {
         'direccion' => $direccion,
     ]);
 
-    header('Location: Inicio.php?perfil=guardado');
+    header('Location: index.php?perfil=guardado');
     exit;
 } catch (PDOException $e) {
     if ((string) $e->getCode() === '23505') {

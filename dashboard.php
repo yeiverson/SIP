@@ -1,16 +1,38 @@
 <?php
 session_start();
-require_once 'config.php';
+require_once __DIR__ . '/config/database.php';
 
-// 1. Proteger la ruta: si no hay sesión, al login.
-if (!isset($_SESSION['user_id'])) {
-    header('Location: Inicio.php');
+$rutas = [
+    1 => 'vistas/admin/dashboard.php',
+    2 => 'vistas/coordinador/dashboard.php',
+    3 => 'vistas/docente/dashboard.php',
+    4 => 'vistas/secretaria/dashboard.php',
+    5 => 'vistas/aspirante/dashboard.php',
+    6 => 'vistas/estudiante/dashboard.php',
+    7 => 'vistas/director/dashboard.php',
+];
+
+if (isset($_SESSION['rol']) && isset($rutas[$_SESSION['rol']])) {
+    header('Location: ' . $rutas[$_SESSION['rol']]);
     exit();
 }
 
-$userId = $_SESSION['user_id'];
+if (isset($_SESSION['usuario_id'])) {
+    $stmt = $pdo->prepare("SELECT rol_id FROM usuarios WHERE id = :id");
+    $stmt->execute([':id' => $_SESSION['usuario_id']]);
+    $usuario = $stmt->fetch();
+    if ($usuario && isset($rutas[$usuario['rol_id']])) {
+        $_SESSION['rol'] = (int)$usuario['rol_id'];
+        header('Location: ' . $rutas[$usuario['rol_id']]);
+        exit();
+    }
+}
 
-// 2. Extraer los datos del usuario logueado de la Base de Datos
+header('Location: index.php');
+exit();
+
+// Legacy content below - kept for backward compatibility with deep links.
+$userId = $_SESSION['user_id'] ?? 0;
 try {
     $stmt = $pdo->prepare("SELECT id, nombres, apellidos, cedula, tipo_cedula, email FROM usuarios WHERE id = :id");
     $stmt->execute([':id' => $userId]);

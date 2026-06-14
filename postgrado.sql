@@ -1,116 +1,323 @@
--- PostgreSQL database dump corregido
-
-SET statement_timeout = 0;
-SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
+-- PostgreSQL database dump actualizado — SIP-Postgrado 7 Roles
+SET statement_timeout = 0; SET lock_timeout = 0; SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8'; SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
-SET check_function_bodies = false;
-SET xmloption = content;
-SET client_min_messages = warning;
-SET row_security = off;
-SET default_tablespace = '';
-SET default_table_access_method = heap;
+SET check_function_bodies = false; SET xmloption = content;
+SET client_min_messages = warning; SET row_security = off;
+SET default_tablespace = ''; SET default_table_access_method = heap;
 
--- Tabla: baremo_preguntas
-CREATE TABLE IF NOT EXISTS public.baremo_preguntas (
-    id integer NOT NULL,
-    pregunta text NOT NULL,
-    categoria character varying(50) NOT NULL,
-    orden integer
+-- ============================================================
+-- 1. EXTENSIONES
+-- ============================================================
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ============================================================
+-- 2. TABLAS BASE
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.roles (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL UNIQUE,
+    descripcion TEXT
 );
+INSERT INTO public.roles (id, nombre, descripcion) VALUES
+    (1, 'Administrador', 'Administrador del sistema'),
+    (2, 'Coordinador', 'Coordinador de programa'),
+    (3, 'Docente', 'Docente / Profesor'),
+    (4, 'Secretaria', 'Secretaría de Control de Estudios'),
+    (5, 'Aspirante', 'Aspirante / Postulante'),
+    (6, 'Estudiante', 'Estudiante regular'),
+    (7, 'Director', 'Director de postgrado')
+ON CONFLICT (id) DO NOTHING;
 
-CREATE SEQUENCE IF NOT EXISTS public.baremo_preguntas_id_seq
-    AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
-
-ALTER SEQUENCE public.baremo_preguntas_id_seq OWNED BY public.baremo_preguntas.id;
-
--- Tabla: password_reset_tokens
-CREATE TABLE IF NOT EXISTS public.password_reset_tokens (
-    email character varying(255) NOT NULL,
-    token character varying(255) NOT NULL,
-    created_at timestamp(0) without time zone
+CREATE TABLE IF NOT EXISTS public.sedes (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(150) NOT NULL,
+    ubicacion VARCHAR(255),
+    codigo VARCHAR(20) UNIQUE,
+    fase_actual INTEGER DEFAULT 1 CHECK (fase_actual IN (1,2)),
+    activa BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+INSERT INTO public.sedes (nombre, ubicacion, codigo) VALUES
+    ('Caracas', 'Distrito Capital', 'CCS'),
+    ('Maracay', 'Estado Aragua', 'MAR'),
+    ('San Tomé', 'Estado Anzoátegui', 'STO')
+ON CONFLICT (codigo) DO NOTHING;
 
--- Tabla: personal_access_tokens
-CREATE TABLE IF NOT EXISTS public.personal_access_tokens (
-    id bigint NOT NULL,
-    tokenable_type character varying(255) NOT NULL,
-    tokenable_id bigint NOT NULL,
-    name character varying(255) NOT NULL,
-    token character varying(64) NOT NULL,
-    abilities text,
-    last_used_at timestamp(0) without time zone,
-    expires_at timestamp(0) without time zone,
-    created_at timestamp(0) without time zone,
-    updated_at timestamp(0) without time zone
-);
-
-CREATE SEQUENCE IF NOT EXISTS public.personal_access_tokens_id_seq
-    START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
-
-ALTER SEQUENCE public.personal_access_tokens_id_seq OWNED BY public.personal_access_tokens.id;
-
--- Tabla: respuestas_baremo
-CREATE TABLE IF NOT EXISTS public.respuestas_baremo (
-    id integer NOT NULL,
-    id_aspirante integer,
-    id_pregunta integer,
-    respuesta character varying(2) NOT NULL,
-    fecha_respuesta timestamp without time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE SEQUENCE IF NOT EXISTS public.respuestas_baremo_id_seq
-    AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
-
-ALTER SEQUENCE public.respuestas_baremo_id_seq OWNED BY public.respuestas_baremo.id;
-
--- Tabla: users
-CREATE TABLE IF NOT EXISTS public.users (
-    id bigint NOT NULL,
-    name character varying(255) NOT NULL,
-    email character varying(255) NOT NULL,
-    email_verified_at timestamp(0) without time zone,
-    password character varying(255) NOT NULL,
-    remember_token character varying(100),
-    created_at timestamp(0) without time zone,
-    updated_at timestamp(0) without time zone
-);
-
-CREATE SEQUENCE IF NOT EXISTS public.users_id_seq
-    START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
-
-ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
-
--- Tabla: usuarios
+-- ============================================================
+-- 3. TABLA usuarios (extendida)
+-- ============================================================
 CREATE TABLE IF NOT EXISTS public.usuarios (
-    id integer NOT NULL,
-    tipo_cedula character varying(8) NOT NULL,
-    nombres character varying(100) NOT NULL,
-    apellidos character varying(100) NOT NULL,
-    email character varying(150) NOT NULL,
-    telefono character varying(20),
-    direccion text,
-    password character varying(255) NOT NULL,
-    fecha_registro timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    cedula integer,
-    CONSTRAINT usuarios_tipo_cedula_check CHECK (((tipo_cedula)::bpchar = ANY (ARRAY['V'::bpchar, 'E'::bpchar])))
+    id SERIAL PRIMARY KEY,
+    tipo_cedula VARCHAR(8) NOT NULL CHECK (tipo_cedula IN ('V','E','P')),
+    numero_documento VARCHAR(20),
+    cedula INTEGER,
+    nombres VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    telefono VARCHAR(20),
+    direccion TEXT,
+    password VARCHAR(255) NOT NULL,
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    rol_id INTEGER DEFAULT 5 REFERENCES public.roles(id),
+    sede_id INTEGER REFERENCES public.sedes(id),
+    estatus VARCHAR(20) DEFAULT 'Activo' CHECK (estatus IN ('Activo','Inactivo','Bloqueado')),
+    sexo VARCHAR(10),
+    fecha_nacimiento DATE,
+    nacionalidad VARCHAR(100) DEFAULT 'Venezuela',
+    estado_aspirante VARCHAR(30) DEFAULT 'En Revision Digital' CHECK (estado_aspirante IN ('En Revision Digital','Con Observaciones','Admitido'))
+);
+UPDATE public.usuarios SET numero_documento = cedula::varchar WHERE numero_documento IS NULL AND cedula IS NOT NULL;
+
+-- ============================================================
+-- 4. TABLAS ACADÉMICAS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.plan_estudios (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(255) NOT NULL,
+    tipo VARCHAR(50) CHECK (tipo IN ('Especializacion','Maestria','Doctorado')),
+    codigo VARCHAR(20) UNIQUE,
+    activo BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE SEQUENCE IF NOT EXISTS public.usuarios_id_seq
-    AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+CREATE TABLE IF NOT EXISTS public.asignaturas (
+    codigo VARCHAR(20) PRIMARY KEY,
+    nombre VARCHAR(255) NOT NULL,
+    uc INTEGER NOT NULL CHECK (uc > 0),
+    horas_teoricas INTEGER DEFAULT 0,
+    horas_practicas INTEGER DEFAULT 0,
+    activa BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-ALTER SEQUENCE public.usuarios_id_seq OWNED BY public.usuarios.id;
+CREATE TABLE IF NOT EXISTS public.plan_asignaturas (
+    id SERIAL PRIMARY KEY,
+    plan_id INTEGER REFERENCES public.plan_estudios(id) ON DELETE CASCADE,
+    asignatura_codigo VARCHAR(20) REFERENCES public.asignaturas(codigo) ON DELETE CASCADE,
+    semestre INTEGER,
+    obligatoria BOOLEAN DEFAULT true,
+    UNIQUE(plan_id, asignatura_codigo)
+);
 
--- Defaults
-ALTER TABLE ONLY public.baremo_preguntas ALTER COLUMN id SET DEFAULT nextval('public.baremo_preguntas_id_seq'::regclass);
-ALTER TABLE ONLY public.personal_access_tokens ALTER COLUMN id SET DEFAULT nextval('public.personal_access_tokens_id_seq'::regclass);
-ALTER TABLE ONLY public.respuestas_baremo ALTER COLUMN id SET DEFAULT nextval('public.respuestas_baremo_id_seq'::regclass);
-ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
-ALTER TABLE ONLY public.usuarios ALTER COLUMN id SET DEFAULT nextval('public.usuarios_id_seq'::regclass);
+CREATE TABLE IF NOT EXISTS public.plan_sede (
+    id SERIAL PRIMARY KEY,
+    plan_id INTEGER REFERENCES public.plan_estudios(id) ON DELETE CASCADE,
+    sede_id INTEGER REFERENCES public.sedes(id) ON DELETE CASCADE,
+    UNIQUE(plan_id, sede_id)
+);
 
--- Datos: baremo_preguntas
+CREATE SEQUENCE IF NOT EXISTS public.secciones_id_seq;
+CREATE TABLE IF NOT EXISTS public.secciones (
+    id INTEGER DEFAULT nextval('public.secciones_id_seq') PRIMARY KEY,
+    plan_id INTEGER REFERENCES public.plan_estudios(id),
+    asignatura_codigo VARCHAR(20) REFERENCES public.asignaturas(codigo),
+    seccion VARCHAR(10) NOT NULL,
+    profesor_id INTEGER REFERENCES public.usuarios(id),
+    sede_id INTEGER REFERENCES public.sedes(id),
+    cupo_maximo INTEGER DEFAULT 25,
+    cupo_actual INTEGER DEFAULT 0,
+    aula VARCHAR(50),
+    periodo VARCHAR(20),
+    activa BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS public.horarios (
+    id SERIAL PRIMARY KEY,
+    seccion_id INTEGER REFERENCES public.secciones(id) ON DELETE CASCADE,
+    dia_semana INTEGER CHECK (dia_semana BETWEEN 1 AND 7),
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME NOT NULL,
+    UNIQUE(seccion_id, dia_semana, hora_inicio)
+);
+
+-- ============================================================
+-- 5. TABLAS DE PROCESOS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.solicitudes_docentes (
+    id SERIAL PRIMARY KEY,
+    coordinador_id INTEGER REFERENCES public.usuarios(id),
+    sede_id INTEGER REFERENCES public.sedes(id),
+    tipo_documento VARCHAR(5) CHECK (tipo_documento IN ('V','E','P')),
+    numero_documento VARCHAR(20) NOT NULL,
+    nombres VARCHAR(200) NOT NULL,
+    apellidos VARCHAR(200) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    nacionalidad VARCHAR(100),
+    estatus VARCHAR(20) DEFAULT 'Pendiente' CHECK (estatus IN ('Pendiente','Aprobado','Rechazado')),
+    admin_id INTEGER REFERENCES public.usuarios(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    resuelto_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS public.inscripciones (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER REFERENCES public.usuarios(id),
+    seccion_id INTEGER REFERENCES public.secciones(id),
+    estatus VARCHAR(20) DEFAULT 'Por Cancelar' CHECK (estatus IN ('Por Cancelar','Formalizada','Eliminada','Resguardada')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(usuario_id, seccion_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.pagos (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER REFERENCES public.usuarios(id),
+    inscripcion_id INTEGER REFERENCES public.inscripciones(id),
+    banco VARCHAR(100),
+    referencia VARCHAR(100) UNIQUE,
+    monto DECIMAL(12,2) NOT NULL,
+    fecha_pago DATE,
+    secretaria_id INTEGER REFERENCES public.usuarios(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS public.creditos_resguardados (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER REFERENCES public.usuarios(id),
+    sede_origen_id INTEGER REFERENCES public.sedes(id),
+    sede_destino_id INTEGER REFERENCES public.sedes(id),
+    uc_resguardadas INTEGER NOT NULL CHECK (uc_resguardadas > 0),
+    monto_resguardado DECIMAL(12,2),
+    motivo VARCHAR(50) CHECK (motivo IN ('Eliminacion','Traslado','Reembolso')),
+    estatus VARCHAR(20) DEFAULT 'Activo' CHECK (estatus IN ('Activo','Aplicado','Reversado')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    aplicado_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS public.actas_notas (
+    id SERIAL PRIMARY KEY,
+    seccion_id INTEGER REFERENCES public.secciones(id),
+    usuario_id INTEGER REFERENCES public.usuarios(id),
+    nota INTEGER CHECK (nota BETWEEN 0 AND 20),
+    inasistencia BOOLEAN DEFAULT false,
+    estatus VARCHAR(20) DEFAULT 'Borrador' CHECK (estatus IN ('Borrador','Definitiva')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(seccion_id, usuario_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.actas_log (
+    id SERIAL PRIMARY KEY,
+    acta_id INTEGER REFERENCES public.actas_notas(id),
+    usuario_id INTEGER REFERENCES public.usuarios(id),
+    nota_anterior INTEGER,
+    nota_nueva INTEGER,
+    accion VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================
+-- 6. TABLAS DEL ADMINISTRADOR
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.llaves_digitales (
+    id SERIAL PRIMARY KEY,
+    tipo VARCHAR(50) CHECK (tipo IN ('ModificarPlan','ReabrirActa','EliminarMateria')),
+    solicitante_id INTEGER REFERENCES public.usuarios(id),
+    admin_id INTEGER REFERENCES public.usuarios(id),
+    destino_id INTEGER,
+    estatus VARCHAR(20) DEFAULT 'Activa' CHECK (estatus IN ('Activa','Expirada','Usada')),
+    validez_horas INTEGER DEFAULT 24,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expira_at TIMESTAMP,
+    used_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS public.logs_auditoria (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER REFERENCES public.usuarios(id),
+    accion VARCHAR(100) NOT NULL,
+    entidad VARCHAR(50),
+    entidad_id INTEGER,
+    detalle TEXT,
+    direccion_ip VARCHAR(45),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================
+-- 7. TABLAS DEL ASPIRANTE
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.aspirante_documentos (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER REFERENCES public.usuarios(id),
+    tipo VARCHAR(50) CHECK (tipo IN ('Cedula','Pasaporte','Titulo','Notas','Curriculum')),
+    archivo_ruta VARCHAR(500),
+    archivo_nombre VARCHAR(255),
+    verificado BOOLEAN DEFAULT false,
+    observaciones TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Baremo (legacy)
+CREATE TABLE IF NOT EXISTS public.baremo_preguntas (
+    id SERIAL PRIMARY KEY,
+    pregunta TEXT NOT NULL,
+    categoria VARCHAR(50) NOT NULL,
+    orden INTEGER
+);
+CREATE TABLE IF NOT EXISTS public.respuestas_baremo (
+    id SERIAL PRIMARY KEY,
+    id_aspirante INTEGER REFERENCES public.usuarios(id),
+    id_pregunta INTEGER REFERENCES public.baremo_preguntas(id),
+    respuesta VARCHAR(2) NOT NULL,
+    fecha_respuesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================
+-- 8. ÍNDICES
+-- ============================================================
+CREATE INDEX IF NOT EXISTS idx_usuarios_rol ON public.usuarios(rol_id);
+CREATE INDEX IF NOT EXISTS idx_usuarios_sede ON public.usuarios(sede_id);
+CREATE INDEX IF NOT EXISTS idx_usuarios_documento ON public.usuarios(tipo_cedula, numero_documento);
+CREATE INDEX IF NOT EXISTS idx_secciones_profesor ON public.secciones(profesor_id);
+CREATE INDEX IF NOT EXISTS idx_secciones_sede ON public.secciones(sede_id);
+CREATE INDEX IF NOT EXISTS idx_inscripciones_usuario ON public.inscripciones(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_inscripciones_seccion ON public.inscripciones(seccion_id);
+CREATE INDEX IF NOT EXISTS idx_inscripciones_estatus ON public.inscripciones(estatus);
+CREATE INDEX IF NOT EXISTS idx_pagos_usuario ON public.pagos(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_actas_notas_seccion ON public.actas_notas(seccion_id);
+CREATE INDEX IF NOT EXISTS idx_actas_notas_usuario ON public.actas_notas(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_logs_usuario ON public.logs_auditoria(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_logs_created ON public.logs_auditoria(created_at);
+CREATE INDEX IF NOT EXISTS idx_solicitudes_estatus ON public.solicitudes_docentes(estatus);
+CREATE INDEX IF NOT EXISTS idx_creditos_usuario ON public.creditos_resguardados(usuario_id);
+
+-- ============================================================
+-- 9. DATOS INICIALES
+-- ============================================================
+INSERT INTO public.asignaturas (codigo, nombre, uc, horas_teoricas, horas_practicas) VALUES
+    ('MET551', 'Metodología de la Investigación', 3, 2, 1),
+    ('GER401', 'Gerencia Estratégica', 3, 2, 1),
+    ('EST301', 'Estadística Aplicada', 3, 2, 1),
+    ('DER201', 'Derecho Administrativo', 2, 2, 0),
+    ('INF601', 'Gerencia de la Informática', 3, 2, 1),
+    ('FIN501', 'Finanzas Públicas', 3, 2, 1)
+ON CONFLICT (codigo) DO NOTHING;
+
+INSERT INTO public.plan_estudios (nombre, tipo, codigo) VALUES
+    ('Maestría en Gerencia Logística', 'Maestria', 'MGL-2026'),
+    ('Maestría en Educación Superior', 'Maestria', 'MES-2026')
+ON CONFLICT (codigo) DO NOTHING;
+
+INSERT INTO public.plan_asignaturas (plan_id, asignatura_codigo, semestre)
+SELECT p.id, a.codigo, 1 FROM public.plan_estudios p, public.asignaturas a
+WHERE p.codigo = 'MGL-2026' AND a.codigo IN ('MET551','GER401','EST301','DER201','INF601','FIN501')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.plan_sede (plan_id, sede_id)
+SELECT p.id, s.id FROM public.plan_estudios p, public.sedes s
+WHERE p.codigo = 'MGL-2026' AND s.codigo IN ('CCS','MAR','STO')
+ON CONFLICT DO NOTHING;
+
+-- Usuario administrador por defecto (password: Admin2026!)
+INSERT INTO public.usuarios (tipo_cedula, cedula, numero_documento, nombres, apellidos, email, password, rol_id, estatus)
+VALUES ('V', 1, '1', 'Admin', 'Sistema', 'admin@sip.unefa.edu.ve',
+        '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 'Activo')
+ON CONFLICT (email) DO NOTHING;
+
+-- Baremo preguntas (legacy)
 INSERT INTO public.baremo_preguntas (id, pregunta, categoria, orden) VALUES
 (1, 'Participación en eventos científicos nacionales e internacionales.', 'Academico', 1),
 (2, 'Participación como jurado o tutor en trabajos de investigación.', 'Academico', 2),
@@ -125,41 +332,9 @@ INSERT INTO public.baremo_preguntas (id, pregunta, categoria, orden) VALUES
 (11, 'La investigación satisface fines personales o institucionales.', 'Investigacion', 11),
 (12, 'Acceso y disponibilidad al manejo de equipos tecnológicos.', 'Otros', 12),
 (13, 'Disponibilidad personal para financiar los estudios (Opción A).', 'Otros', 13),
-(14, 'Disponibilidad personal para financiar los estudios (Opción B).', 'Otros', 14);
-
--- Datos: usuarios
-INSERT INTO public.usuarios (id, tipo_cedula, nombres, apellidos, email, telefono, direccion, password, fecha_registro, cedula) VALUES
-(1, 'V', 'lola', 'perez', 'mariajose@gmail.com', '04241241299', 'caracas', '$2y$10$QqIhRwsQODNAsOVqCvQ.qO8yFnvmZ0b/aGaxYs9wRkCmhLJjauVHm', '2026-03-10 00:02:30.533759', NULL),
-(2, 'V', 'martin', 'veliz', 'martin@gmail.com', '04241252377', 'caracas', '$2y$10$YWBY4iJ8y6vXA5BZNg/vPe.oi9tY3Bq3gRYvRnQmBLlvQK16iDCwy', '2026-03-10 08:49:06.484777', NULL),
-(4, 'V', 'ELIAS', 'FUENTES', 'mussiomaria@gmail.com', '04126788663', 'CARACAS', '$2y$10$eZ9iq1iltsVxlpDV8Xb5Zu0ra3iI/KldWzGN0E5bUlYcpZ5mKEwyu', '2026-03-10 13:24:05.227439', NULL),
-(9, 'V', 'pedro', 'veliz', 'usuario@gmail.com', '04133567845', 'caracas', '$2y$10$f2D2JlWuZZWCyQtUMQ48SO9r07bCSDvxfDFSUSZxzS1g8NcC2WdBW', '2026-03-11 11:13:20.256224', NULL),
-(11, 'V', 'fernanda', 'FUENTES', 'usuarioS@gmail.com', '04241231456', 'caracas', '$2y$10$wUFZIMAumcHRprP6OKWPT.7RK4VKbY2lNFMA6oLIhaP6L/qdjw1sC', '2026-03-11 11:28:37.072154', 26152344),
-(12, 'V', 'hayley', 'ortega', 'hayleey5@gmail.com', '04241240723', 'caracas', '$2y$10$OdaE7A7iZnbnnO18lBBdHOjmve.D97L8ohyXwfFbzdx6ux77Dj./m', '2026-03-20 13:05:47.482169', 6332727),
-(23, 'V', 'Pendiente', 'Pendiente', 'maria@gmail.com', NULL, 'Pendiente', '$2y$10$lhAgRuJ1dsFu9huTFqnuBeY1UHrif1rKAG36iUB//JXktt9SXbFei', '2026-04-02 21:25:23.324435', 12345678),
-(24, 'V', 'Pendiente', 'Pendiente', 'marco@gmail.com', NULL, 'Pendiente', '$2y$10$1EEJw9ai1avrWKw8zAqVeO1K7bvvNV/XcJmGM.eyz76WMlvKUhDgi', '2026-04-03 00:11:22.164663', 24208067),
-(25, 'E', 'Pendiente', 'Pendiente', 'usuarios@gmail.com', NULL, 'Pendiente', '$2y$10$h/qndNDZy7nPeARjf9opmOvCqqGA3adl4KU8yKrMN5Zcg0/Qs1hX.', '2026-04-03 01:51:13.609624', 12345678);
+(14, 'Disponibilidad personal para financiar los estudios (Opción B).', 'Otros', 14)
+ON CONFLICT (id) DO NOTHING;
 
 -- Secuencias
 SELECT pg_catalog.setval('public.baremo_preguntas_id_seq', 14, true);
-SELECT pg_catalog.setval('public.personal_access_tokens_id_seq', 1, false);
-SELECT pg_catalog.setval('public.respuestas_baremo_id_seq', 1, false);
-SELECT pg_catalog.setval('public.users_id_seq', 1, false);
-SELECT pg_catalog.setval('public.usuarios_id_seq', 25, true);
-
--- Primary Keys
-ALTER TABLE ONLY public.baremo_preguntas ADD CONSTRAINT baremo_preguntas_pkey PRIMARY KEY (id);
-ALTER TABLE ONLY public.password_reset_tokens ADD CONSTRAINT password_reset_tokens_pkey PRIMARY KEY (email);
-ALTER TABLE ONLY public.personal_access_tokens ADD CONSTRAINT personal_access_tokens_pkey PRIMARY KEY (id);
-ALTER TABLE ONLY public.personal_access_tokens ADD CONSTRAINT personal_access_tokens_token_unique UNIQUE (token);
-ALTER TABLE ONLY public.respuestas_baremo ADD CONSTRAINT respuestas_baremo_pkey PRIMARY KEY (id);
-ALTER TABLE ONLY public.usuarios ADD CONSTRAINT uq_email UNIQUE (email);
-ALTER TABLE ONLY public.users ADD CONSTRAINT users_email_unique UNIQUE (email);
-ALTER TABLE ONLY public.users ADD CONSTRAINT users_pkey PRIMARY KEY (id);
-ALTER TABLE ONLY public.usuarios ADD CONSTRAINT usuarios_pkey PRIMARY KEY (id);
-
--- Índices
-CREATE INDEX personal_access_tokens_tokenable_type_tokenable_id_index ON public.personal_access_tokens USING btree (tokenable_type, tokenable_id);
-
--- Foreign Keys
-ALTER TABLE ONLY public.respuestas_baremo ADD CONSTRAINT respuestas_baremo_id_aspirante_fkey FOREIGN KEY (id_aspirante) REFERENCES public.usuarios(id);
-ALTER TABLE ONLY public.respuestas_baremo ADD CONSTRAINT respuestas_baremo_id_pregunta_fkey FOREIGN KEY (id_pregunta) REFERENCES public.baremo_preguntas(id);
+SELECT pg_catalog.setval('public.usuarios_id_seq', COALESCE((SELECT MAX(id) FROM public.usuarios), 25), true);

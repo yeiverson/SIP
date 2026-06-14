@@ -1,4 +1,4 @@
-<!-- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -9,6 +9,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style-registro.css">
     <link rel="icon" href="imagenes/sip.ico">
+    <style>
+        .doc-helper { font-size: 0.75rem; color: #999; margin-top: 4px; }
+        .error-msg { background: #fee; color: #c00; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 0.82rem; text-align: center; border: 1px solid #fcc; }
+        .success-msg { background: #efe; color: #080; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 0.82rem; text-align: center; border: 1px solid #afa; }
+    </style>
 </head>
 <body>
 
@@ -558,15 +563,16 @@
                     <div class="form-grid-2">
                         <div class="input-group">
                             <label>Tipo de documento:</label>
-                            <select name="tipoDocumento" required>
+                            <select name="tipoDocumento" required onchange="toggleRegDocType()">
                                 <option value="" disabled selected>Seleccione</option>
-                                <option value="V">V</option>
-                                <option value="E">E</option>
+                                <option value="V">V — Venezolano</option>
+                                <option value="E">E — Extranjero</option>
+                                <option value="P">P — Pasaporte</option>
                             </select>
                         </div>
                         <div class="input-group">
-                            <label>Cédula de Identidad:</label>
-                            <input type="text" name="cedula" placeholder="Escribe tu número de cédula" required>
+                            <label id="doc-label">Cédula / Pasaporte:</label>
+                            <input type="text" name="cedula" id="reg-cedula" placeholder="Número de cédula o pasaporte" required>
                         </div>
                     </div>
                     <div class="form-grid-2" style="margin-top: 16px;">
@@ -888,9 +894,30 @@
                 <p>Vicerrectorado de Investigación, Postgrado y Recreación</p>
             </div>
         </div>
-    </footer> -->
+    </footer>
 
-    <!-- <script src="multi-step-form.js"></script>
+<script>
+function toggleRegDocType() {
+    const tipo = document.getElementById('tipoDocumento') || document.querySelector('select[name="tipoDocumento"]');
+    const cedulaInput = document.getElementById('reg-cedula') || document.querySelector('input[name="cedula"]');
+    const label = document.getElementById('doc-label');
+    if (!tipo || !cedulaInput) return;
+    if (tipo.value === 'P') {
+        cedulaInput.placeholder = 'Ej: FR98765432 (alfanumérico)';
+        cedulaInput.pattern = '[A-Za-z0-9]{4,20}';
+        if (label) label.textContent = 'Pasaporte:';
+    } else if (tipo.value) {
+        cedulaInput.placeholder = 'Solo números, 7-10 dígitos';
+        cedulaInput.pattern = '\\d{7,10}';
+        if (label) label.textContent = 'Cédula de Identidad:';
+    } else {
+        cedulaInput.placeholder = 'Número de cédula o pasaporte';
+        cedulaInput.removeAttribute('pattern');
+        if (label) label.textContent = 'Cédula / Pasaporte:';
+    }
+}
+</script>
+<script src="multi-step-form.js"></script>
 
 </body>
-</html> -->
+</html>

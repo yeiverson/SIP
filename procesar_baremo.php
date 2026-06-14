@@ -3,12 +3,12 @@ session_start();
 require_once 'config.php';
 
 // Si no hay sesión iniciada, pa' fuera
-if (!isset($_SESSION['user_id'])) {
-    header('Location: Inicio.php');
+if (!isset($_SESSION['usuario_id']) && !isset($_SESSION['user_id'])) {
+    header('Location: index.php');
     exit();
 }
 
-$userId = $_SESSION['user_id'];
+$userId = $_SESSION['usuario_id'] ?? $_SESSION['user_id'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     

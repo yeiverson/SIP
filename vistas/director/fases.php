@@ -52,6 +52,11 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Fases por Sede | Director</title>
     <link rel="stylesheet" href="../../css/tu_estilo.css">
+    <link rel="stylesheet" href="../../css/dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../imagenes/sip.ico">
 </head>
 <body>
 
@@ -59,7 +64,11 @@ try {
     
     <aside class="sidebar">
         <div class="sidebar-header">
-            <h3>SIP-Postgrado</h3>
+            <img class="logo-img" src="<?php echo obtener_ruta_base(); ?>imagenes/LOGO-1-1.png" alt="UNEFA">
+            <div class="sidebar-brand">
+                <h3>SIP-Postgrado</h3>
+                <span class="brand-sub">UNEFA</span>
+            </div>
             <p>Rol: Director Global</p>
         </div>
         <nav class="sidebar-menu">
@@ -128,5 +137,4 @@ try {
     </main>
 </div>
 
-</body>
-</html>
+<?php require_once __DIR__ . '/../../includes/template_footer.php'; ?>

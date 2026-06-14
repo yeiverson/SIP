@@ -14,14 +14,23 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $datos = procesar_datos_desde_post();
 
+$documento_valido = function ($valor, $todos_los_datos) {
+    $tipo = (string) ($todos_los_datos['tipoDocumento'] ?? '');
+    $valor = (string) $valor;
+    if ($tipo === 'P') {
+        return preg_match('/^[A-Za-z0-9]{4,20}$/', $valor);
+    }
+    return $cedula_valida($valor);
+};
+
 $errores = [
     'tipoDocumento' => [
         'validar' => $vacio,
         'mensaje' => 'Selecciona una opción de tipo de documento',
     ],
     'cedula' => [
-        'validar' => $cedula_valida,
-        'mensaje' => 'Cédula incorrecta',
+        'validar' => $documento_valido,
+        'mensaje' => 'Número de documento incorrecto. V/E: 7-8 dígitos, P: 4-20 alfanumérico',
     ],
     'email' => [
         'validar' => $email_valido,
@@ -55,23 +64,33 @@ foreach ($errores as $campo => $array_interno) {
 
 if (empty($lista_errores)) {
     try {
-        $cedula_limpia = preg_replace('/\D/', '', (string) $datos['cedula']);
         $tipo = (string) $datos['tipoDocumento'];
+        $doc_raw = (string) $datos['cedula'];
 
-        $sql = 'INSERT INTO usuarios (cedula, tipo_cedula, nombres, apellidos, email, password, telefono, direccion) 
-                VALUES (:ci, :tipo, :nom, :ape, :mail, :pass, :tel, :dir)';
+        if ($tipo === 'P') {
+            $cedula_db = 0;
+            $numero_doc_db = strtoupper($doc_raw);
+        } else {
+            $cedula_db = (int) preg_replace('/\D/', '', $doc_raw);
+            $numero_doc_db = (string) $cedula_db;
+        }
+
+        $sql = 'INSERT INTO usuarios (cedula, tipo_cedula, numero_documento, nombres, apellidos, email, password, telefono, direccion, rol_id, estatus) 
+                VALUES (:ci, :tipo, :ndoc, :nom, :ape, :mail, :pass, :tel, :dir, 5, :estatus)';
 
         $stmt = $pdo->prepare($sql);
 
         $stmt->execute([
-            ':ci'   => $cedula_limpia,
-            ':tipo' => $tipo,
-            ':nom'  => 'Pendiente',
-            ':ape'  => 'Pendiente',
-            ':mail' => (string) $datos['email'],
-            ':pass' => password_hash((string) $datos['password'], PASSWORD_BCRYPT),
-            ':tel'  => null,
-            ':dir'  => 'Pendiente',
+            ':ci'      => $cedula_db,
+            ':tipo'    => $tipo,
+            ':ndoc'    => $numero_doc_db,
+            ':nom'     => 'Pendiente',
+            ':ape'     => 'Pendiente',
+            ':mail'    => (string) $datos['email'],
+            ':pass'    => password_hash((string) $datos['password'], PASSWORD_BCRYPT),
+            ':tel'     => null,
+            ':dir'     => 'Pendiente',
+            ':estatus' => 'Activo',
         ]);
 
         echo json_encode(['status' => 'success', 'message' => 'Usuario registrado']);
@@ -85,6 +104,8 @@ if (empty($lista_errores)) {
                 $lista_errores['email'] = 'Error: Este correo electrónico ya está registrado en el sistema.';
             } elseif (stripos($mensaje_sql, 'cedula') !== false) {
                 $lista_errores['cedula'] = 'Error: Esta cédula ya pertenece a un usuario registrado.';
+            } elseif (stripos($mensaje_sql, 'numero_documento') !== false) {
+                $lista_errores['cedula'] = 'Error: Este número de documento ya está registrado en el sistema.';
             } else {
                 $lista_errores['db'] = 'Uno de los datos ingresados ya se encuentra registrado. Verifica cédula y correo.';
             }
