@@ -13,14 +13,13 @@ function check_auth() {
     }
 
     if (!isset($_SESSION['usuario_id'])) {
-        // Intentamos usar el helper obtener_ruta_base() si está cargado; si no, una ruta relativa segura
         if (function_exists('obtener_ruta_base')) {
             $base = obtener_ruta_base();
         } else {
-            // Ruta relativa aproximada (sube tantos niveles como la ruta del script)
             $niveles = substr_count($_SERVER['SCRIPT_NAME'] ?? '', '/') - 1;
             $base = str_repeat('../', max(0, $niveles));
         }
+
         header('Location: ' . $base . 'index.php?error=Debe+iniciar+sesión');
         exit();
     }
@@ -29,6 +28,7 @@ function check_auth() {
 function check_rol($roles_permitidos) {
     check_auth();
     $roles = is_array($roles_permitidos) ? $roles_permitidos : [$roles_permitidos];
+
     if (!in_array($_SESSION['rol'] ?? null, $roles, true)) {
         if (function_exists('obtener_ruta_base')) {
             $base = obtener_ruta_base();
@@ -36,12 +36,11 @@ function check_rol($roles_permitidos) {
             $niveles = substr_count($_SERVER['SCRIPT_NAME'] ?? '', '/') - 1;
             $base = str_repeat('../', max(0, $niveles));
         }
+
         header('Location: ' . $base . 'index.php?error=Acceso+no+autorizado');
         exit();
     }
 }
-
-// obtener_ruta_base() normalmente está en includes/functions.php. No la redeclaramos aquí para evitar fatal errors.
 
 if (!function_exists('obtener_nombre_rol')) {
     function obtener_nombre_rol($rol_id) {
@@ -76,6 +75,7 @@ if (!function_exists('redirigir_por_rol')) {
             6 => $base . 'vistas/estudiante/dashboard.php',
             7 => $base . 'vistas/director/dashboard.php',
         ];
+
         header('Location: ' . ($rutas[$rol_id] ?? $base . 'index.php'));
         exit();
     }
