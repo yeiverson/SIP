@@ -11,8 +11,16 @@ function check_auth() {
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
+
     if (!isset($_SESSION['usuario_id'])) {
-        $base = defined('BASE_URL') ? rtrim(BASE_URL, '/') . '/' : 'index.php';
+        // Intentamos usar el helper obtener_ruta_base() si está cargado; si no, una ruta relativa segura
+        if (function_exists('obtener_ruta_base')) {
+            $base = obtener_ruta_base();
+        } else {
+            // Ruta relativa aproximada (sube tantos niveles como la ruta del script)
+            $niveles = substr_count($_SERVER['SCRIPT_NAME'] ?? '', '/') - 1;
+            $base = str_repeat('../', max(0, $niveles));
+        }
         header('Location: ' . $base . 'index.php?error=Debe+iniciar+sesión');
         exit();
     }
@@ -21,57 +29,54 @@ function check_auth() {
 function check_rol($roles_permitidos) {
     check_auth();
     $roles = is_array($roles_permitidos) ? $roles_permitidos : [$roles_permitidos];
-    if (!in_array($_SESSION['rol'], $roles)) {
-        $base = defined('BASE_URL') ? rtrim(BASE_URL, '/') . '/' : 'index.php';
+    if (!in_array($_SESSION['rol'] ?? null, $roles, true)) {
+        if (function_exists('obtener_ruta_base')) {
+            $base = obtener_ruta_base();
+        } else {
+            $niveles = substr_count($_SERVER['SCRIPT_NAME'] ?? '', '/') - 1;
+            $base = str_repeat('../', max(0, $niveles));
+        }
         header('Location: ' . $base . 'index.php?error=Acceso+no+autorizado');
         exit();
     }
 }
 
-function obtener_ruta_base() {
-    if (defined('BASE_URL') && BASE_URL) {
-        return rtrim(BASE_URL, '/') . '/';
+// obtener_ruta_base() normalmente está en includes/functions.php. No la redeclaramos aquí para evitar fatal errors.
+
+if (!function_exists('obtener_nombre_rol')) {
+    function obtener_nombre_rol($rol_id) {
+        $mapa = [
+            1 => 'Administrador',
+            2 => 'Coordinador',
+            3 => 'Docente',
+            4 => 'Secretaría',
+            5 => 'Aspirante',
+            6 => 'Estudiante',
+            7 => 'Director',
+        ];
+        return $mapa[$rol_id] ?? 'Desconocido';
     }
-
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $script = $_SERVER['SCRIPT_NAME'] ?? ($_SERVER['PHP_SELF'] ?? '/');
-    $basePath = '/';
-
-    $indexPos = strpos($script, '/index.php');
-    if ($indexPos !== false) {
-        $basePath = substr($script, 0, $indexPos);
-    } else {
-        $basePath = rtrim(dirname($script), '/\\');
-    }
-
-    return $scheme . '://' . $host . ($basePath === '/' ? '' : $basePath) . '/';
 }
 
-function obtener_nombre_rol($rol_id) {
-    $mapa = [
-        1 => 'Administrador',
-        2 => 'Coordinador',
-        3 => 'Docente',
-        4 => 'Secretaría',
-        5 => 'Aspirante',
-        6 => 'Estudiante',
-        7 => 'Director',
-    ];
-    return $mapa[$rol_id] ?? 'Desconocido';
-}
+if (!function_exists('redirigir_por_rol')) {
+    function redirigir_por_rol($rol_id) {
+        if (function_exists('obtener_ruta_base')) {
+            $base = obtener_ruta_base();
+        } else {
+            $niveles = substr_count($_SERVER['SCRIPT_NAME'] ?? '', '/') - 1;
+            $base = str_repeat('../', max(0, $niveles));
+        }
 
-function redirigir_por_rol($rol_id) {
-    $base = obtener_ruta_base();
-    $rutas = [
-        1 => $base . 'vistas/admin/dashboard.php',
-        2 => $base . 'vistas/coordinador/dashboard.php',
-        3 => $base . 'vistas/docente/dashboard.php',
-        4 => $base . 'vistas/secretaria/dashboard.php',
-        5 => $base . 'vistas/aspirante/dashboard.php',
-        6 => $base . 'vistas/estudiante/dashboard.php',
-        7 => $base . 'vistas/director/dashboard.php',
-    ];
-    header('Location: ' . ($rutas[$rol_id] ?? $base . 'index.php'));
-    exit();
+        $rutas = [
+            1 => $base . 'vistas/admin/dashboard.php',
+            2 => $base . 'vistas/coordinador/dashboard.php',
+            3 => $base . 'vistas/docente/dashboard.php',
+            4 => $base . 'vistas/secretaria/dashboard.php',
+            5 => $base . 'vistas/aspirante/dashboard.php',
+            6 => $base . 'vistas/estudiante/dashboard.php',
+            7 => $base . 'vistas/director/dashboard.php',
+        ];
+        header('Location: ' . ($rutas[$rol_id] ?? $base . 'index.php'));
+        exit();
+    }
 }
