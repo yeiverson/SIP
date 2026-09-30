@@ -12,7 +12,8 @@ function check_auth() {
         session_start();
     }
     if (!isset($_SESSION['usuario_id'])) {
-        header('Location: ' . obtener_ruta_base() . 'index.php?error=Debe+iniciar+sesión');
+        $base = defined('BASE_URL') ? rtrim(BASE_URL, '/') . '/' : 'index.php';
+        header('Location: ' . $base . 'index.php?error=Debe+iniciar+sesión');
         exit();
     }
 }
@@ -21,14 +22,30 @@ function check_rol($roles_permitidos) {
     check_auth();
     $roles = is_array($roles_permitidos) ? $roles_permitidos : [$roles_permitidos];
     if (!in_array($_SESSION['rol'], $roles)) {
-        header('Location: ' . obtener_ruta_base() . 'index.php?error=Acceso+no+autorizado');
+        $base = defined('BASE_URL') ? rtrim(BASE_URL, '/') . '/' : 'index.php';
+        header('Location: ' . $base . 'index.php?error=Acceso+no+autorizado');
         exit();
     }
 }
 
 function obtener_ruta_base() {
-    $niveles = substr_count($_SERVER['SCRIPT_NAME'], '/') - 1;
-    return str_repeat('../', $niveles);
+    if (defined('BASE_URL') && BASE_URL) {
+        return rtrim(BASE_URL, '/') . '/';
+    }
+
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $script = $_SERVER['SCRIPT_NAME'] ?? ($_SERVER['PHP_SELF'] ?? '/');
+    $basePath = '/';
+
+    $indexPos = strpos($script, '/index.php');
+    if ($indexPos !== false) {
+        $basePath = substr($script, 0, $indexPos);
+    } else {
+        $basePath = rtrim(dirname($script), '/\\');
+    }
+
+    return $scheme . '://' . $host . ($basePath === '/' ? '' : $basePath) . '/';
 }
 
 function obtener_nombre_rol($rol_id) {
