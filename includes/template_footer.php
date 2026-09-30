@@ -4,21 +4,23 @@
  */
 ?>
 <footer class="glass-footer">
-    <img src="<?php echo obtener_ruta_base(); ?>imagenes/gob.png" alt="Gob" style="height:18px;opacity:0.4;filter:grayscale(1);margin:0 6px;">
-    <strong>UNEFA</strong> | Excelencia Educativa Abierta al Pueblo
-    <img src="<?php echo obtener_ruta_base(); ?>imagenes/200.png" alt="200" style="height:18px;opacity:0.4;filter:grayscale(1);margin:0 6px;">
-    <br>
-    Vicerrectorado de Investigación, Postgrado y Recreación<br>
-    SIP-Postgrado 2026 &middot; Todos los derechos reservados
+    <div class="footer-row">
+        <img src="<?php echo h(asset_url('imagenes/gob.png')); ?>" alt="Gobierno" class="footer-badge">
+        <img src="<?php echo h(asset_url('imagenes/200.png')); ?>" alt="UNEFA 200" class="footer-badge">
+    </div>
+    <div class="footer-text">
+        <strong>UNEFA</strong> | Excelencia Educativa Abierta al Pueblo
+    </div>
+    <div class="footer-meta">
+        Vicerrectorado de Investigación, Postgrado y Recreación<br>
+        SIP-Postgrado 2026 &middot; Todos los derechos reservados
+    </div>
 </footer>
 
 <!-- Particles canvas -->
 <canvas id="particles-canvas"></canvas>
 
 <script>
-// ===== GLOBAL INTERACTIVE JS =====
-
-// Sidebar collapse toggle
 (function() {
     const sidebar = document.querySelector('.sidebar');
     const toggleBtn = document.querySelector('.sidebar-toggle');
@@ -35,7 +37,6 @@
     }
 })();
 
-// Toast notification helper
 function mostrarToast(mensaje, tipo) {
     tipo = tipo || 'success';
     let container = document.querySelector('.toast-container');
@@ -56,23 +57,26 @@ function mostrarToast(mensaje, tipo) {
     }, 3500);
 }
 
-// Module tab switching
 function mostrarModulo(modulo) {
     document.querySelectorAll('.module-section').forEach(function(s) { s.style.display = 'none'; });
     var el = document.getElementById('modulo-' + modulo);
-    if (el) { el.style.display = 'block'; el.style.animation = 'none'; setTimeout(function() { el.style.animation = ''; }, 10); }
+    if (el) {
+        el.style.display = 'block';
+        el.style.animation = 'none';
+        setTimeout(function() { el.style.animation = ''; }, 10);
+    }
     document.querySelectorAll('.sidebar-menu a').forEach(function(a) { a.classList.remove('active'); });
     document.querySelectorAll('.sidebar-menu a').forEach(function(a) {
         var text = a.textContent.trim().toLowerCase();
-        var classes = a.className;
-        if (text.indexOf(modulo) !== -1 || a.getAttribute('data-modulo') === modulo) a.classList.add('active');
+        if (text.indexOf(modulo) !== -1 || a.getAttribute('data-modulo') === modulo) {
+            a.classList.add('active');
+        }
     });
     if (window.location.hash !== '#modulo-' + modulo) {
         window.location.hash = 'modulo-' + modulo;
     }
 }
 
-// Hash-based module navigation on load
 (function() {
     var hash = window.location.hash.replace('#modulo-', '');
     if (hash && document.getElementById('modulo-' + hash)) {
@@ -80,12 +84,10 @@ function mostrarModulo(modulo) {
     }
 })();
 
-// Confirm dialog helper
 function confirmar(mensaje) {
     return confirm(mensaje || '¿Está seguro de realizar esta acción?');
 }
 
-// Auto-dismiss alerts after 6 seconds
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.alert').forEach(function(el) {
         setTimeout(function() {
@@ -100,7 +102,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 6000);
     });
 
-    // Scroll reveal animation
     const observer = new IntersectionObserver(function(entries) {
         entries.forEach(function(entry) {
             if (entry.isIntersecting) {
@@ -110,6 +111,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }, { threshold: 0.1 });
+
     document.querySelectorAll('.form-section, .table-section, .card').forEach(function(el) {
         if (!el.classList.contains('card')) {
             el.style.opacity = '0';
@@ -119,7 +121,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Staggered entrance for table rows
     document.querySelectorAll('.data-table tbody tr').forEach(function(row, i) {
         row.style.opacity = '0';
         row.style.transform = 'translateX(-10px)';
@@ -131,7 +132,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// ===== PARTICLES BACKGROUND =====
 (function() {
     var canvas = document.getElementById('particles-canvas');
     if (!canvas) return;
@@ -174,7 +174,6 @@ document.addEventListener('DOMContentLoaded', function() {
     animate();
 })();
 
-// ===== COUNTER ANIMATION =====
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.count-up').forEach(function(el) {
         var target = parseInt(el.textContent.replace(/[^0-9]/g, '')) || 0;
@@ -182,7 +181,10 @@ document.addEventListener('DOMContentLoaded', function() {
         var step = Math.max(1, Math.floor(target / 30));
         var timer = setInterval(function() {
             current += step;
-            if (current >= target) { current = target; clearInterval(timer); }
+            if (current >= target) {
+                current = target;
+                clearInterval(timer);
+            }
             el.textContent = current;
         }, 30);
     });
