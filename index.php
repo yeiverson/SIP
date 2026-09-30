@@ -1,5 +1,9 @@
 <?php
 session_start();
+// Cargar configuración y helpers para resolver rutas de assets dinámicamente
+require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/includes/functions.php';
+
 if (isset($_SESSION['usuario_id'])) {
     $rutas = [
         1 => 'vistas/admin/dashboard.php',
@@ -14,7 +18,8 @@ if (isset($_SESSION['usuario_id'])) {
     header("Location: $ruta");
     exit();
 }
-?><!DOCTYPE html>
+?>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -23,8 +28,8 @@ if (isset($_SESSION['usuario_id'])) {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style-inicio.css">
-    <link rel="icon" href="imagenes/sip.ico">
+    <link rel="stylesheet" href="<?php echo h(asset_url('style-inicio.css')); ?>">
+    <link rel="icon" href="<?php echo h(asset_url('imagenes/sip.ico')); ?>">
     <style>
         .error-msg { background: #fee; color: #c00; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 0.72rem; text-align: center; border: 1px solid #fcc; }
         .success-msg { background: #efe; color: #080; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 0.72rem; text-align: center; border: 1px solid #afa; }
@@ -35,7 +40,7 @@ if (isset($_SESSION['usuario_id'])) {
 <div class="background-overlay">
     <header class="navbar">
         <div class="logo-container">
-            <img src="imagenes/LOGO-1-1.png" alt="Logo UNEFA" class="logo-img">
+            <img src="<?php echo h(asset_url('imagenes/LOGO-1-1.png')); ?>" alt="Logo UNEFA" class="logo-img">
         </div>
         <div class="nav-buttons">
             <a href="Inicio.php" class="btn-outline">Inicio de Sesión</a>
@@ -98,8 +103,8 @@ if (isset($_SESSION['usuario_id'])) {
             <footer class="card-footer">
                 <p>SIP-Postgrado 2026 · UNEFA</p>
                 <div class="footer-logos">
-                    <img class="gob" src="imagenes/gob.png" alt="Gobierno">
-                    <img class="batalla" src="imagenes/200.png" alt="200 Batalla">
+                    <img class="gob" src="<?php echo h(asset_url('imagenes/gob.png')); ?>" alt="Gobierno">
+                    <img class="batalla" src="<?php echo h(asset_url('imagenes/200.png')); ?>" alt="200 Batalla">
                 </div>
             </footer>
         </section>
