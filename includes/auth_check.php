@@ -6,6 +6,7 @@
  *      check_rol(1);             // Solo Admin
  *      check_rol([1,2,7]);       // Admin, Coordinador o Director
  */
+require_once __DIR__ . '/functions.php';
 
 function check_auth() {
     if (session_status() === PHP_SESSION_NONE) {

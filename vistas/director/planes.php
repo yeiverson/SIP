@@ -53,22 +53,9 @@ try {
 } catch (PDOException $e) {
     $materias = [];
 }
+$titulo = 'Gestión de Planes de Estudio | Director';
+require_once __DIR__ . '/../../includes/template_header.php';
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Planes de Estudio | Director</title>
-    <link rel="stylesheet" href="../../css/tu_estilo.css">
-    <link rel="stylesheet" href="../../css/dashboard.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="icon" href="../../imagenes/sip.ico">
-</head>
-<body>
-
 <div class="dashboard-container">
     
     <aside class="sidebar">

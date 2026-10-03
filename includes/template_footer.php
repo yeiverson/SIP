@@ -58,24 +58,51 @@ function mostrarToast(mensaje, tipo) {
 }
 
 function mostrarModulo(modulo) {
-    document.querySelectorAll('.module-section').forEach(function(s) { s.style.display = 'none'; });
-    var el = document.getElementById('modulo-' + modulo);
-    if (el) {
-        el.style.display = 'block';
-        el.style.animation = 'none';
-        setTimeout(function() { el.style.animation = ''; }, 10);
+    if (modulo === 'inicio') {
+        document.querySelectorAll('.module-section').forEach(function(s) { s.style.display = 'block'; });
+        if (window.location.hash) {
+            history.replaceState(null, null, window.location.pathname + window.location.search);
+        }
+    } else {
+        document.querySelectorAll('.module-section').forEach(function(s) { s.style.display = 'none'; });
+        var el = document.getElementById('modulo-' + modulo);
+        if (el) {
+            el.style.display = 'block';
+            el.style.animation = 'none';
+            setTimeout(function() { el.style.animation = ''; }, 10);
+        }
+        if (window.location.hash !== '#modulo-' + modulo) {
+            window.location.hash = 'modulo-' + modulo;
+        }
     }
     document.querySelectorAll('.sidebar-menu a').forEach(function(a) { a.classList.remove('active'); });
     document.querySelectorAll('.sidebar-menu a').forEach(function(a) {
-        var text = a.textContent.trim().toLowerCase();
-        if (text.indexOf(modulo) !== -1 || a.getAttribute('data-modulo') === modulo) {
+        if (a.getAttribute('data-modulo') === modulo) {
             a.classList.add('active');
         }
     });
-    if (window.location.hash !== '#modulo-' + modulo) {
-        window.location.hash = 'modulo-' + modulo;
-    }
 }
+
+document.addEventListener('click', function(e) {
+    var link = e.target.closest('.sidebar-menu a');
+    if (!link) return;
+    var modulo = link.getAttribute('data-modulo');
+    var href = link.getAttribute('href') || '';
+    if (!modulo && href.indexOf('#modulo-') === 0) {
+        modulo = href.replace('#modulo-', '');
+    }
+    if (modulo) {
+        e.preventDefault();
+        mostrarModulo(modulo);
+    }
+});
+
+window.addEventListener('hashchange', function() {
+    var hash = window.location.hash.replace('#modulo-', '');
+    if (hash) {
+        mostrarModulo(hash);
+    }
+});
 
 (function() {
     var hash = window.location.hash.replace('#modulo-', '');

@@ -532,6 +532,91 @@ body::before {
 [data-theme="dark"] .modal-footer { background: #1e2433; }
 
 /* Topbar */
+.unefa-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 24px;
+    background: rgba(0, 26, 87, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    gap: 16px;
+    transition: var(--dm-transition);
+}
+
+.container-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.container-brand .brand-mark {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.brand-copy {
+    display: flex;
+    flex-direction: column;
+}
+
+.brand-copy strong {
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+    line-height: 1.2;
+}
+
+.brand-copy span {
+    font-size: 0.68rem;
+    color: #cbd5e1;
+    font-weight: 400;
+    line-height: 1.2;
+}
+
+.container-program {
+    display: flex;
+    flex-direction: column;
+    text-align: right;
+    margin-left: auto;
+}
+
+.container-program .eyebrow {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: #f3cf55;
+    font-weight: 700;
+}
+
+.container-program strong {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 0.3px;
+}
+
+@media (max-width: 768px) {
+    .unefa-topbar {
+        padding: 8px 16px;
+    }
+    .brand-copy span {
+        display: none;
+    }
+    .container-program {
+        display: none;
+    }
+}
+
 [data-theme="dark"] .unefa-topbar {
     background: rgba(10, 13, 30, 0.97);
     border-color: rgba(255,255,255,0.04);

@@ -5,18 +5,41 @@
  */
 
 if (!defined('BASE_URL')) {
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $script = $_SERVER['SCRIPT_NAME'] ?? ($_SERVER['PHP_SELF'] ?? '/');
-
-    $indexPos = strpos($script, '/index.php');
-    if ($indexPos !== false) {
-        $basePath = substr($script, 0, $indexPos);
+    $envUrl = getenv('BASE_URL');
+    if ($envUrl && $envUrl !== false) {
+        define('BASE_URL', rtrim($envUrl, '/') . '/');
     } else {
-        $basePath = rtrim(dirname($script), '/\\');
-    }
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
 
-    define('BASE_URL', $scheme . '://' . $host . ($basePath === '/' ? '' : $basePath) . '/');
+        $projectRoot = rtrim(str_replace('\\', '/', realpath(__DIR__) ?: __DIR__), '/');
+        $docRoot     = !empty($_SERVER['DOCUMENT_ROOT']) ? rtrim(str_replace('\\', '/', realpath($_SERVER['DOCUMENT_ROOT']) ?: $_SERVER['DOCUMENT_ROOT']), '/') : '';
+        $scriptName  = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? ($_SERVER['PHP_SELF'] ?? ''));
+        $scriptFile  = !empty($_SERVER['SCRIPT_FILENAME']) ? str_replace('\\', '/', realpath($_SERVER['SCRIPT_FILENAME']) ?: $_SERVER['SCRIPT_FILENAME']) : '';
+
+        $basePath = '';
+        if ($docRoot && stripos($projectRoot, $docRoot) === 0) {
+            $basePath = substr($projectRoot, strlen($docRoot));
+        } elseif ($scriptFile && $projectRoot && stripos($scriptFile, $projectRoot) === 0) {
+            $relScript = substr($scriptFile, strlen($projectRoot));
+            if ($relScript !== '' && (substr($scriptName, -strlen($relScript)) === $relScript)) {
+                $basePath = substr($scriptName, 0, -strlen($relScript));
+            }
+        } else {
+            $folderName = '/' . basename($projectRoot);
+            $pos = stripos($scriptName, $folderName);
+            if ($pos !== false) {
+                $basePath = substr($scriptName, 0, $pos + strlen($folderName));
+            }
+        }
+
+        $basePath = '/' . trim($basePath, '/');
+        if ($basePath === '/') {
+            $basePath = '';
+        }
+
+        define('BASE_URL', $scheme . '://' . $host . $basePath . '/');
+    }
 }
 
 if (!defined('APP_TIMEZONE')) {

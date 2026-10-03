@@ -236,16 +236,34 @@ function obtener_ruta_base(): string {
 
     $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $script = $_SERVER['SCRIPT_NAME'] ?? ($_SERVER['PHP_SELF'] ?? '/');
 
-    $indexPos = strpos($script, '/index.php');
-    if ($indexPos !== false) {
-        $basePath = substr($script, 0, $indexPos);
+    $projectRoot = rtrim(str_replace('\\', '/', realpath(__DIR__ . '/..') ?: dirname(__DIR__)), '/');
+    $docRoot     = !empty($_SERVER['DOCUMENT_ROOT']) ? rtrim(str_replace('\\', '/', realpath($_SERVER['DOCUMENT_ROOT']) ?: $_SERVER['DOCUMENT_ROOT']), '/') : '';
+    $scriptName  = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? ($_SERVER['PHP_SELF'] ?? ''));
+    $scriptFile  = !empty($_SERVER['SCRIPT_FILENAME']) ? str_replace('\\', '/', realpath($_SERVER['SCRIPT_FILENAME']) ?: $_SERVER['SCRIPT_FILENAME']) : '';
+
+    $basePath = '';
+    if ($docRoot && stripos($projectRoot, $docRoot) === 0) {
+        $basePath = substr($projectRoot, strlen($docRoot));
+    } elseif ($scriptFile && $projectRoot && stripos($scriptFile, $projectRoot) === 0) {
+        $relScript = substr($scriptFile, strlen($projectRoot));
+        if ($relScript !== '' && (substr($scriptName, -strlen($relScript)) === $relScript)) {
+            $basePath = substr($scriptName, 0, -strlen($relScript));
+        }
     } else {
-        $basePath = rtrim(dirname($script), '/\\');
+        $folderName = '/' . basename($projectRoot);
+        $pos = stripos($scriptName, $folderName);
+        if ($pos !== false) {
+            $basePath = substr($scriptName, 0, $pos + strlen($folderName));
+        }
     }
 
-    return $scheme . '://' . $host . ($basePath === '/' ? '' : $basePath) . '/';
+    $basePath = '/' . trim($basePath, '/');
+    if ($basePath === '/') {
+        $basePath = '';
+    }
+
+    return $scheme . '://' . $host . $basePath . '/';
 }
 
 function asset_url(string $path): string {
