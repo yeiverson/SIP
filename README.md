@@ -1,35 +1,50 @@
-# SIP-Postgrado UNEFA
+# SIP — Sistema Integral de Postgrado UNEFA
 
-**Sistema Integral de Postgrado** de la Universidad Nacional Experimental de la Fuerza Armada (UNEFA).
+[![PHP](https://img.shields.io/badge/PHP-8.x-blue.svg)](https://php.net)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-316192.svg)](https://postgresql.org)
+[![License](https://img.shields.io/badge/licencia-Uso_Institucional-001a57.svg)](#)
 
-Sistema web de gestión académica con 7 roles, diseñado para administrar postgrados, desde la preinscripción del aspirante hasta la emisión de actas de notas definitivas, incluyendo control de sedes, planes de estudio, secciones, horarios, pagos y créditos resguardados.
+> **Sistema de gestión académica** para el Vicerrectorado de Investigación, Postgrado y Recreación de la UNEFA. Administra usuarios, inscripciones, notas, pagos, documentos y reportes para 7 perfiles de rol.
+
+---
+
+## 📋 Tabla de Contenidos
+
+- [Tecnologías](#tecnologías)
+- [Roles del Sistema](#roles-del-sistema)
+- [Estructura del Proyecto](#estructura-del-proyecto)
+- [Instalación y Configuración](#instalación-y-configuración)
+- [Variables de Entorno](#variables-de-entorno)
+- [Funcionalidades por Rol](#funcionalidades-por-rol)
+- [API Endpoints](#api-endpoints)
+- [Seguridad](#seguridad)
+- [Despliegue a Producción](#despliegue-a-producción)
 
 ---
 
 ## Tecnologías
 
-| Componente | Tecnología |
-|------------|------------|
-| Frontend | HTML5, CSS3, JavaScript (vanilla) |
-| Backend | PHP 7.4+ / 8.x |
-| Base de datos | PostgreSQL 15+ |
-| Estilos | Glassmorphism, Montserrat, animaciones CSS/JS |
-| Autenticación | bcrypt, sesiones PHP, token CSRF |
-| Servidor | Apache (XAMPP) |
+| Capa | Tecnología |
+|------|-----------|
+| Backend | PHP 8.x (sin frameworks) |
+| Base de datos | PostgreSQL 15+ (PDO) |
+| Frontend | HTML5 · CSS3 · JavaScript ES6 |
+| Servidor local | XAMPP (Apache) |
+| Control de versiones | Git |
 
 ---
 
-## Roles del Sistema (7)
+## Roles del Sistema
 
-| ID | Rol | Dashboard | Descripción |
-|----|-----|-----------|-------------|
-| 1 | Administrador | `vistas/admin/dashboard.php` | Gestión de sedes, solicitudes docentes, llaves digitales, auditoría, créditos, baremo |
-| 2 | Coordinador | `vistas/coordinador/dashboard.php` | Planificación de oferta académica, solicitud de docentes |
-| 3 | Docente | `vistas/docente/dashboard.php` | Carga académica, actas de notas (0-20), inasistencias |
-| 4 | Secretaría | `vistas/secretaria/dashboard.php` | Admisiones, taquilla virtual, maestro estudiantes, visor documentos |
-| 5 | Aspirante | `vistas/aspirante/dashboard.php` | Postulación, baremo, carga de documentos PDF |
-| 6 | Estudiante | `vistas/estudiante/dashboard.php` | Inscripción interactiva, horario, notas |
-| 7 | Director | `vistas/director/dashboard.php` | Planes de estudio, control de fases multi-sede |
+| rol_id | Nombre | Descripción |
+|--------|--------|-------------|
+| 1 | Administrador | Control total del sistema |
+| 2 | Coordinador | Gestión de secciones y estudiantes por sede |
+| 3 | Docente | Carga de notas, consulta de secciones asignadas |
+| 4 | Secretaria/Tesorería | Validación de pagos y documentos |
+| 5 | Director | Reportes y estadísticas globales |
+| 6 | Estudiante | Inscripción, kardex y constancias |
+| 7 | Aspirante | Registro e inicio de proceso de admisión |
 
 ---
 
@@ -37,144 +52,191 @@ Sistema web de gestión académica con 7 roles, diseñado para administrar postg
 
 ```
 SIP/
-├── index.php                     # Login principal
-├── registro.php                  # Registro de aspirantes
-├── llenado_de_perfil.php         # Completar perfil post-registro
-├── procesar_registro.php         # AJAX: registro de usuarios
-├── procesar_login.php            # Procesa autenticación
-├── procesar_baremo.php           # Guarda respuestas del baremo
-├── procesar_perfil.php           # Actualiza perfil de usuario
-├── procesar.php                  # Validadores compartidos
-├── logout.php                    # Cierre de sesión
-│
 ├── config/
-│   ├── database.php              # Conexión PDO a PostgreSQL
-│   └── conexion.php              # Redirección a database.php
-│
-├── includes/
-│   ├── auth_check.php            # check_auth(), check_rol(), redirigir_por_rol()
-│   ├── functions.php             # Helpers: h(), alertas(), fechas
-│   ├── logs.php                  # registrar_log() para auditoría
-│   ├── template_header.php       # Header HTML con CSS/JS
-│   ├── template_footer.php       # Footer con partículas y animaciones JS
-│   ├── queries_usuarios.php      # Consultas de usuarios
-│   └── queries_baremo.php        # Consultas del baremo
-│
+│   └── database.php          # Conexión PDO a PostgreSQL
 ├── controlador/
-│   ├── procesar_login.php        # Login con V/E/P
-│   ├── cerrar_sesion.php         # Logout alternativo
-│   ├── descargar_documento.php   # Descarga con control de acceso
-│   └── api/
-│       ├── buscar_estudiante.php  # Buscar estudiantes (JSON)
-│       ├── buscar_referencia.php  # Buscar referencia de pago (JSON)
-│       ├── buscar_asignaturas.php # Asignaturas por plan (JSON)
-│       └── listar_documentos.php  # Documentos del aspirante (JSON)
-│
-├── vistas/
-│   ├── admin/dashboard.php       # Panel Administrador
-│   ├── coordinador/
-│   │   ├── dashboard.php         # Panel Coordinador
-│   │   └── crear_seccion.php     # Crear secciones
-│   ├── docente/dashboard.php     # Panel Docente
-│   ├── secretaria/dashboard.php  # Panel Secretaría
-│   ├── aspirante/dashboard.php   # Panel Aspirante
-│   ├── estudiante/dashboard.php  # Panel Estudiante
-│   └── director/
-│       ├── dashboard.php         # Panel Director
-│       ├── planes.php            # Gestión de planes
-│       └── fases.php             # Control de fases
-│
+│   ├── api/                  # Endpoints JSON (rate limited)
+│   │   ├── buscar_asignaturas.php
+│   │   ├── buscar_estudiante.php
+│   │   ├── buscar_referencia.php
+│   │   └── listar_documentos.php
+│   ├── procesar_login.php
+│   ├── descargar_documento.php
+│   └── reportes.php          # Constancias, actas, CSV
 ├── css/
-│   ├── tu_estilo.css             # Tema principal (glassmorphism)
-│   ├── dashboard.css             # Animaciones e interactividad
-│   ├── style-inicio.css          # Estilo del login
-│   ├── style-registro.css        # Estilo del registro
-│   └── style-dashboard.css       # Estilo legacy del dashboard
-│
-├── js/
-│   └── multi-step-form.js        # Validación del formulario multi-paso
-│
-├── database/
-│   ├── migracion_completa.sql    # Migración completa del esquema
-│   ├── adaptar_existente.sql     # Adaptación de BD legacy
-│   ├── backup_completo.sql       # Backup completo con datos
-│   └── postgrado.sql             # Esquema completo con datos iniciales
-│
-├── uploads/
-│   ├── documentos/               # PDFs de aspirantes
-│   └── temp/                     # Archivos temporales
-│
-├── imagenes/
-│   ├── FACHADA AZULADA.png       # Fondo de pantalla principal
-│   ├── LOGO-1-1.png              # Logo UNEFA
-│   ├── gob.png                   # Logo gobierno
-│   ├── 200.png                   # Logo 200 Batalla
-│   └── ...                       # Otros assets
-│
-└── .gitignore
+│   ├── dashboard.css         # Componentes de dashboard
+│   └── tu_estilo.css         # Sistema de diseño + dark mode
+├── errors/
+│   ├── 404.php               # Página 404 personalizada
+│   └── 500.php               # Página 500 personalizada
+├── imagenes/                 # Assets estáticos (WebP)
+├── includes/
+│   ├── auth_check.php        # Verificación de sesión y rol
+│   ├── autoloader.php        # PSR-4 nativo
+│   ├── functions.php         # Helpers: h(), flash(), csrf_token()…
+│   ├── Logger.php            # Logger estructurado (logs/app.log)
+│   ├── logs.php              # Auditoría en BD (logs_auditoria)
+│   ├── queries_usuarios.php  # Consultas de usuario
+│   ├── RateLimiter.php       # Rate limiting por IP (archivos)
+│   └── template_header.php   # Header compartido + dark mode toggle
+├── logs/                     # Logs de archivo (protegido .htaccess)
+├── modelos/
+│   ├── Baremo.php            # Modelo de Baremo de admisión
+│   ├── Seccion.php           # Modelo de Sección académica
+│   └── Usuario.php           # Modelo de Usuario
+├── uploads/                  # Documentos subidos por aspirantes
+│   └── rate/                 # Contadores de rate limit (privado)
+├── vistas/
+│   ├── admin/dashboard.php
+│   ├── aspirante/dashboard.php
+│   ├── coordinador/dashboard.php
+│   ├── director/dashboard.php
+│   ├── docente/dashboard.php
+│   ├── estudiante/dashboard.php
+│   └── secretaria/dashboard.php
+├── .env                      # Variables de entorno (NO versionar)
+├── .env.example              # Plantilla de variables
+├── config.php                # Autoloader + timezone + BD
+├── index.php                 # Punto de entrada (login)
+├── procesar_registro.php     # Flujo de registro de aspirantes
+└── postgrado.sql             # Esquema SQL completo
 ```
 
 ---
 
-## Instalación
+## Instalación y Configuración
 
-### 1. Requisitos
-
-- XAMPP (Apache + PHP 8+)
+### Requisitos previos
+- XAMPP con PHP 8.1+ y Apache
 - PostgreSQL 15+
-- Git
+- Extensión PHP: `pdo_pgsql`, `mbstring`, `fileinfo`
 
-### 2. Clonar repositorio
+### Pasos
 
-```bash
-git clone https://github.com/yeiverson/SIP.git
-cd SIP
-```
+1. **Clonar el repositorio** en `c:\xampp\htdocs\SIP`
 
-### 3. Configurar base de datos
+2. **Crear la base de datos** en PostgreSQL:
+   ```sql
+   CREATE DATABASE unefa_postgrado ENCODING 'UTF8';
+   \c unefa_postgrado
+   \i postgrado.sql
+   ```
 
-```bash
-createdb -U postgres unefa_postgrados
-psql -U postgres -d unefa_postgrados -f database/backup_completo.sql
-```
+3. **Configurar variables de entorno:**
+   ```bash
+   cp .env.example .env
+   ```
+   Edita `.env` con tus credenciales (ver sección siguiente).
 
-### 4. Configurar conexión
+4. **Permisos de directorios:**
+   ```bash
+   # En Linux/Mac
+   chmod 750 logs/ uploads/rate/
+   ```
 
-Editar `config/database.php`:
-
-```php
-$db_host     = "localhost";
-$db_port     = "5432";
-$db_name     = "unefa_postgrados";
-$db_user     = "postgres";
-$db_password = "tu_contraseña";
-```
-
-### 5. Usuarios de prueba
-
-| Usuario | Documento | Tipo | Contraseña | Rol |
-|---------|-----------|------|------------|-----|
-| Admin | 1 | V | `password` | Administrador |
-| Coordinador | 87654321 | V | `password` | Coordinador |
-| Docente | 11223344 | V | `password` | Docente |
-| Secretaría | 55667788 | V | `password` | Secretaría |
-| Aspirante | 99887766 | V | `password` | Aspirante |
-| Estudiante | 44332211 | V | `password` | Estudiante |
-| Director | 22334455 | V | `password` | Director |
-| Pasaporte | FR98765432 | P | `password` | Aspirante |
+5. **Acceder al sistema:**
+   ```
+   http://localhost/SIP/
+   ```
 
 ---
 
-## Diseño Visual
+## Variables de Entorno
 
-- **Fuente:** Montserrat (Google Fonts)
-- **Color principal:** `#001a57` (UNEFA Blue)
-- **Fondo:** `FACHADA AZULADA.png` con overlay oscuro
-- **Estilo:** Glassmorphism (`backdrop-filter: blur()`) en tarjetas y paneles
-- **Animaciones:** Partículas flotantes (canvas), scroll-reveal (IntersectionObserver), entrada escalonada de filas, modales con scale + slideUp, toasts animados
+Copia `.env.example` a `.env` y configura:
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=unefa_postgrado
+DB_USER=postgres
+DB_PAS=tu_contraseña_segura
+
+APP_ENV=development   # development | production
+APP_DEBUG=true        # false en producción
+```
+
+> ⚠️ **Nunca versiones el archivo `.env`** — ya está en `.gitignore`.
 
 ---
 
-## Licencia
+## Funcionalidades por Rol
 
-SIP-Postgrado UNEFA — Desarrollo interno.
+| Funcionalidad | Admin | Coord. | Docente | Secretaria | Director | Estudiante | Aspirante |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| Gestión de usuarios | ✅ | — | — | — | — | — | — |
+| Crear secciones | ✅ | ✅ | — | — | — | — | — |
+| Carga de notas | ✅ | — | ✅ | — | — | — | — |
+| Inscripción de materias | ✅ | ✅ | — | — | — | ✅ | — |
+| Validar pagos | ✅ | — | — | ✅ | — | — | — |
+| Revisar documentos | ✅ | ✅ | — | ✅ | — | — | — |
+| Kardex / Constancias | ✅ | ✅ | — | ✅ | — | ✅ | — |
+| Baremo de admisión | ✅ | ✅ | — | — | — | — | ✅ |
+| Reportes globales | ✅ | — | — | — | ✅ | — | — |
+| Exportar CSV | ✅ | ✅* | — | — | — | — | — |
+
+> *Coordinador exporta secciones de su sede solamente.
+
+---
+
+## API Endpoints
+
+Todos los endpoints requieren autenticación de sesión y están limitados a **60 peticiones/minuto por IP**.
+
+| Método | Endpoint | Descripción | Roles |
+|--------|----------|-------------|-------|
+| GET | `/controlador/api/buscar_estudiante.php?q=` | Búsqueda de estudiantes | 1,2,4,7 |
+| GET | `/controlador/api/buscar_asignaturas.php?plan_id=` | Asignaturas de un plan | Todos |
+| GET | `/controlador/api/buscar_referencia.php?ref=` | Verificar referencia de pago | 1,2,4,7 |
+| GET | `/controlador/api/listar_documentos.php?uid=` | Documentos de un aspirante | Propietario + 1,2,4,7 |
+| GET | `/controlador/reportes.php?tipo=csv_usuarios` | Exportar usuarios CSV | Solo Admin (1) |
+| GET | `/controlador/reportes.php?tipo=csv_secciones` | Exportar secciones CSV | Admin + Coordinador (1,2) |
+
+**Respuesta de rate limit:**
+```json
+{
+  "error": "Demasiadas solicitudes. Por favor espere antes de intentarlo de nuevo.",
+  "retry_after": 60
+}
+```
+
+---
+
+## Seguridad
+
+| Medida | Implementación |
+|--------|---------------|
+| Contraseñas | `password_hash()` con `PASSWORD_BCRYPT` |
+| Sesiones | HttpOnly · SameSite=Lax · Secure (en HTTPS) |
+| CSRF | Token por sesión en todos los formularios POST |
+| XSS | `h()` = `htmlspecialchars()` en todas las salidas |
+| SQL Injection | PDO con prepared statements en todo el código |
+| Rate Limiting | 60 req/min por IP en endpoints de API |
+| Headers HTTP | `X-Frame-Options`, `X-Content-Type-Options`, `Content-Security-Policy` |
+| Archivos sensibles | `logs/` y `uploads/rate/` bloqueados con `.htaccess` |
+| Credenciales | Variables de entorno vía `.env` |
+
+---
+
+## Despliegue a Producción
+
+Consulta el **[Checklist de Producción](docs/DEPLOYMENT_CHECKLIST.md)** para los pasos completos.
+
+### Puntos críticos antes de desplegar:
+
+1. `APP_ENV=production` y `APP_DEBUG=false` en `.env`
+2. Verificar que `error_reporting(0)` esté activo o configurado en `php.ini`
+3. Habilitar HTTPS y actualizar `BASE_URL` en `.env`
+4. Permisos restrictivos en `uploads/` (no ejecutable, solo lectura/escritura)
+5. Backup de BD antes de migrar
+
+---
+
+## Contribución
+
+Este proyecto es de uso institucional exclusivo para la UNEFA.  
+Para reportar issues o proponer mejoras, comunicarse con el equipo de desarrollo de la Coordinación de Postgrado.
+
+---
+
+*Desarrollado para el Vicerrectorado de Investigación, Postgrado y Recreación — UNEFA, Venezuela.*
