@@ -1,7 +1,8 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+/**
+ * Template de header HTML para dashboards.
+ * Requiere: $titulo, $rol_id (opcional)
+ */
 
 $rol_nombre = obtener_nombre_rol($_SESSION['rol'] ?? 0);
 $nombre_user = $_SESSION['nombre_full'] ?? 'Usuario';
@@ -13,7 +14,6 @@ $css_extra = $css_extra ?? '';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Sistema Integral de Postgrado UNEFA">
     <title><?php echo h($titulo); ?> | SIP-Postgrado UNEFA</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,8 +21,8 @@ $css_extra = $css_extra ?? '';
     <link rel="stylesheet" href="<?php echo h(asset_url('css/tu_estilo.css?v=' . @filemtime(__DIR__ . '/../css/tu_estilo.css'))); ?>">
     <link rel="stylesheet" href="<?php echo h(asset_url('css/dashboard.css?v=' . @filemtime(__DIR__ . '/../css/dashboard.css'))); ?>">
     <link rel="icon" href="<?php echo h(asset_url('imagenes/sip.ico')); ?>">
-    <?php if (!empty($css_extra)): ?>
-    <style><?php echo $css_extra; ?></style>
+    <?php if ($css_extra): ?>
+        <style><?php echo $css_extra; ?></style>
     <?php endif; ?>
     <!-- Anti-FOUC: aplica el tema antes del primer paint -->
     <script>
