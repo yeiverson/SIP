@@ -71,10 +71,20 @@ roles (1) ──< usuarios >── sedes
 | `seccion` | VARCHAR(10) | Código de sección (A, B, Única...) |
 | `profesor_id` | INTEGER FK → usuarios | Docente asignado |
 | `sede_id` | INTEGER FK → sedes | Sede donde se dicta |
+| `aula` | VARCHAR(50) | Aula física o virtual asignada |
 | `cupo_maximo` | INTEGER | Cupo total |
 | `cupo_actual` | INTEGER | Cupos ocupados |
 | `periodo` | VARCHAR(20) | Período académico |
 | `activa` | BOOLEAN | Sección disponible |
+
+### `horarios`
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| `id` | SERIAL PK | Identificador único |
+| `seccion_id` | INTEGER FK → secciones | Sección académica vinculada |
+| `dia_semana` | INTEGER | Día: 1=Lunes, 2=Martes, 3=Miércoles, 4=Jueves, 5=Viernes, 6=Sábado |
+| `hora_inicio` | TIME | Hora de inicio de bloque lectivo |
+| `hora_fin` | TIME | Hora de fin de bloque lectivo |
 
 ### `inscripciones`
 | Columna | Tipo | Descripción |

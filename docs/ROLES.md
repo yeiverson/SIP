@@ -27,7 +27,7 @@ SIP-Postgrado UNEFA implementa 7 roles con acceso granular a módulos específic
 
 | Módulo | Acciones |
 |--------|----------|
-| Planificar Oferta | Crear secciones, asignar horarios, definir cupos |
+| Planificar Oferta | Crear secciones, asignar horarios, aulas y cupos |
 | Solicitar Docente | Solicitar nuevos profesores a administración |
 
 ---
@@ -38,14 +38,17 @@ SIP-Postgrado UNEFA implementa 7 roles con acceso granular a módulos específic
 
 | Módulo | Acciones |
 |--------|----------|
-| Carga Académica | Ver secciones asignadas |
-| Actas de Notas | Registrar notas (0-20), marcar inasistencias |
-| Estado | Borrador (editable) → Definitiva (inmutable) |
+| Mis Asignaturas | Ver secciones asignadas, número de inscritos, aulas y horarios |
+| Mi Horario de Clases | Grilla interactiva semanal (Lunes-Sábado), cálculo de horas académicas, bloques y botón de impresión |
+| Actas de Notas | Registrar notas (0-20), marcar inasistencias (N/S), veredicto automático (Aprobado/Reprobado) |
+| Estado de Acta | Guardar Borrador (editable) → Cierre Definitivo (inmutable) |
+| Reportes | Generación e impresión de Actas Oficiales de Evaluación |
 
 **Reglas:**
 - Notas en escala 0-20, enteras o con medio punto (ej: 15.5)
 - Una vez cerrada el acta (Definitiva), no se puede modificar
-- Solo el Admin puede reabrir un acta definitiva
+- Solo el Administrador puede reabrir un acta definitiva mediante solicitud de gobernanza
+- Los horarios asignados aparecen tanto en la cabecera de la asignatura como en la vista de cronograma
 
 ---
 
@@ -56,7 +59,7 @@ SIP-Postgrado UNEFA implementa 7 roles con acceso granular a módulos específic
 | Módulo | Acciones |
 |--------|----------|
 | Admisiones | Revisar postulaciones, verificar documentos |
-| Taquilla Virtual | Registrar pagos, buscar referencias |
+| Taquilla Virtual | Registrar pagos, validar referencias bancarias |
 | Maestro Estudiantes | Buscar y gestionar estudiantes |
 
 **Visor de Documentos:** Modal con lista de documentos subidos por el aspirante y estado de verificación (✅/⬜).
@@ -70,7 +73,7 @@ SIP-Postgrado UNEFA implementa 7 roles con acceso granular a módulos específic
 | Módulo | Acciones |
 |--------|----------|
 | Postulación | Completar datos personales y académicos |
-| Baremo | Responder 14 preguntas de evaluación (sí/no) |
+| Baremo | Responder preguntas de ponderación del baremo institucional |
 | Documentos | Subir PDF de: Cédula, Pasaporte, Título, Notas, Currículum |
 | Estado | Ver semáforo de revisión |
 
@@ -85,14 +88,17 @@ SIP-Postgrado UNEFA implementa 7 roles con acceso granular a módulos específic
 
 | Módulo | Acciones |
 |--------|----------|
-| Inscripción | Ver secciones disponibles, inscribir materias |
-| Mi Horario | Ver horario semanal |
-| Mis Notas | Consultar calificaciones |
+| Mi Expediente | Vista general de materias inscritas con horarios por materia y docente |
+| Mi Horario de Clases | Cronograma semanal interactivo (Lunes a Sábado), cómputo de horas académicas, días de asistencia y reporte imprimible |
+| Inscripción de Materias | Selección de oferta académica con validación automática de choques horarios y cupos |
+| Registro de Pagos | Reportar transferencias / Pago Móvil para formalización en Taquilla |
+| Historial Académico | Kardex oficial con promedio acumulado, UC aprobadas y reprobadas |
+| Constancias | Descarga de Constancia de Estudio y Comprobante Oficial de Inscripción |
 
 **Reglas:**
 - No puede inscribirse en secciones con choque horario
-- Una vez confirmada la inscripción, debe ir a Secretaría para cambios
-- Los créditos resguardados viajan entre semestres
+- Una vez seleccionada la materia, pasa a estatus 'Por Cancelar' hasta validación de pago en Secretaría ('Formalizada')
+- Los créditos resguardados viajan entre semestres automáticamente
 
 ---
 

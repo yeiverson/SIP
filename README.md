@@ -165,17 +165,37 @@ APP_DEBUG=true        # false en producción
 | Funcionalidad | Admin | Coord. | Docente | Secretaria | Director | Estudiante | Aspirante |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | Gestión de usuarios | ✅ | — | — | — | — | — | — |
-| Crear secciones | ✅ | ✅ | — | — | — | — | — |
-| Carga de notas | ✅ | — | ✅ | — | — | — | — |
+| Crear secciones y aulas | ✅ | ✅ | — | — | — | — | — |
+| Mi Horario Semanal Interactivo | — | — | ✅ | — | — | ✅ | — |
+| Carga de notas y actas | ✅ | — | ✅ | — | — | — | — |
 | Inscripción de materias | ✅ | ✅ | — | — | — | ✅ | — |
-| Validar pagos | ✅ | — | — | ✅ | — | — | — |
+| Validar pagos y taquilla | ✅ | — | — | ✅ | — | — | — |
+| Reportar pago de matrícula | — | — | — | — | — | ✅ | — |
 | Revisar documentos | ✅ | ✅ | — | ✅ | — | — | — |
-| Kardex / Constancias | ✅ | ✅ | — | ✅ | — | ✅ | — |
-| Baremo de admisión | ✅ | ✅ | — | — | — | — | ✅ |
-| Reportes globales | ✅ | — | — | — | ✅ | — | — |
-| Exportar CSV | ✅ | ✅* | — | — | — | — | — |
+| Kardex / Constancias oficiales | ✅ | ✅ | — | ✅ | — | ✅ | — |
+| Baremo Digital (CRUD y Ponderación) | ✅ | ✅ | — | — | — | — | ✅ |
+| Reportes globales y fases | ✅ | — | — | — | ✅ | — | — |
+| Exportar CSV de auditoría | ✅ | ✅* | — | — | — | — | — |
 
 > *Coordinador exporta secciones de su sede solamente.
+
+---
+
+## Módulos Destacados
+
+### 📅 Horarios de Clases Interactivos (Docentes y Estudiantes)
+* **Vista Semanal Gráfica (Lunes a Sábado):** Grilla responsiva que desglosa cada bloque académico con hora de inicio/fin, materia, código, sección, aula y profesor/alumnos.
+* **Métricas en Tiempo Real:** Cómputo automático de horas académicas semanales, total de días lectivos y número de bloques.
+* **Integración en Tablas Principales:** Badges contextuales de día y hora incrustados directamente en el listado de asignaturas.
+* **Reporte Imprimible:** Botón de impresión limpia optimizada (`window.print()`) para formato físico o PDF.
+
+### 📋 Baremo Digital Interactivo (Admin)
+* Gestión integral de preguntas de ponderación para el proceso de admisión.
+* Creación, edición en vivo y activación/desactivación dinámica de preguntas por categoría (*Académico*, *Investigación*, *Otros*).
+
+### 🌓 Sistema de Diseño y Modo Oscuro UNEFA
+* Interfaz con estética institucional (*Azul Navy UNEFA*, *Dorado Institucional* y sutil *Glassmorphism*).
+* **Modo Oscuro con Alto Contraste:** Tipografía nítida en blanco (`#ffffff`), tarjetas con bordes legibles (`#334155`), badges contrastados y tablas accesibles. Persistencia automática en `localStorage`.
 
 ---
 
