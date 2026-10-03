@@ -1,0 +1,2 @@
+# Proteger el directorio de logs — acceso web denegado
+Deny from all

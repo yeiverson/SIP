@@ -1,8 +1,9 @@
 <?php
-session_start();
 // Cargar configuración y helpers para resolver rutas de assets dinámicamente
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/includes/functions.php';
+
+iniciar_sesion_segura();
 
 if (isset($_SESSION['usuario_id'])) {
     $rutas = [
@@ -14,7 +15,7 @@ if (isset($_SESSION['usuario_id'])) {
         6 => 'vistas/estudiante/dashboard.php',
         7 => 'vistas/director/dashboard.php',
     ];
-    $ruta = $rutas[$_SESSION['rol']] ?? 'Inicio.php';
+    $ruta = $rutas[$_SESSION['rol']] ?? 'index.php';
     header("Location: $ruta");
     exit();
 }
@@ -43,7 +44,7 @@ if (isset($_SESSION['usuario_id'])) {
             <img src="<?php echo h(asset_url('imagenes/LOGO-1-1.png')); ?>" alt="Logo UNEFA" class="logo-img">
         </div>
         <div class="nav-buttons">
-            <a href="Inicio.php" class="btn-outline">Inicio de Sesión</a>
+            <a href="index.php" class="btn-outline">Inicio de Sesión</a>
             <a href="registro.php" class="btn-filled">Registro</a>
         </div>
     </header>
@@ -61,7 +62,7 @@ if (isset($_SESSION['usuario_id'])) {
             <p class="subtitle">Ingresa tus credenciales para acceder al sistema.</p>
 
             <?php if (isset($_GET['error'])): ?>
-                <div class="error-msg"><?php echo htmlspecialchars(urldecode($_GET['error'])); ?></div>
+                <div class="error-msg"><?php echo h($_GET['error']); ?></div>
             <?php endif; ?>
             <?php if (isset($_GET['registro'])): ?>
                 <div class="success-msg">✅ ¡Usuario creado con éxito! Ahora ingresa con tus credenciales.</div>
@@ -71,6 +72,7 @@ if (isset($_SESSION['usuario_id'])) {
             <?php endif; ?>
 
             <form action="controlador/procesar_login.php" method="POST" autocomplete="on">
+                <?php echo csrf_field(); ?>
                 <div class="input-group">
                     <label for="tipo_documento">Tipo de documento</label>
                     <select name="tipo_documento" id="tipo_documento" required onchange="toggleDocType()">

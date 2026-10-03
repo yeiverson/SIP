@@ -1,49 +1,61 @@
 <?php
-session_start();
+require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../config/database.php';
+
+iniciar_sesion_segura();
 
 if (!isset($_SESSION['usuario_id'])) {
     http_response_code(403);
-    die('Acceso denegado');
+    exit('Acceso denegado');
 }
 
 $doc_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if (!$doc_id) {
     http_response_code(400);
-    die('ID requerido');
+    exit('ID requerido');
 }
 
-// Solo admin, secretaría o el propio aspirante pueden descargar
+// Consultar documento
 $stmt = $pdo->prepare("SELECT d.*, u.id as uid FROM aspirante_documentos d JOIN usuarios u ON u.id = d.usuario_id WHERE d.id = :id");
 $stmt->execute([':id' => $doc_id]);
 $doc = $stmt->fetch();
 
 if (!$doc) {
     http_response_code(404);
-    die('Documento no encontrado');
+    exit('Documento no encontrado');
 }
 
-$puede = ($_SESSION['rol'] == 4 || $_SESSION['rol'] == 1 || $_SESSION['usuario_id'] == $doc['uid']);
-if (!$puede) {
+$rol = (int)($_SESSION['rol'] ?? 0);
+$es_admin = in_array($rol, [1, 2, 4, 7], true);
+$es_dueno = ((int)$_SESSION['usuario_id'] === (int)$doc['uid']);
+
+if (!$es_admin && !$es_dueno) {
     http_response_code(403);
-    die('No autorizado');
+    exit('No autorizado para ver este documento');
 }
 
-$ruta = __DIR__ . '/../' . $doc['archivo_ruta'];
-if (!file_exists($ruta)) {
+$rutaBaseUploads = realpath(__DIR__ . '/../uploads');
+$rutaArchivo = realpath(__DIR__ . '/../' . $doc['archivo_ruta']);
+
+// Prevenir Path Traversal
+if (!$rutaArchivo || !$rutaBaseUploads || !str_starts_with($rutaArchivo, $rutaBaseUploads) || !file_exists($rutaArchivo)) {
     http_response_code(404);
-    die('Archivo no encontrado en el servidor');
+    exit('Archivo físico no encontrado en el servidor');
 }
 
-$ext = strtolower(pathinfo($ruta, PATHINFO_EXTENSION));
+$ext = strtolower(pathinfo($rutaArchivo, PATHINFO_EXTENSION));
 $mime = [
-    'pdf' => 'application/pdf',
-    'jpg' => 'image/jpeg',
+    'pdf'  => 'application/pdf',
+    'jpg'  => 'image/jpeg',
     'jpeg' => 'image/jpeg',
-    'png' => 'image/png',
+    'png'  => 'image/png',
 ];
 
+$nombreDescarga = preg_replace('/[^A-Za-z0-9_\-\.]/', '_', $doc['archivo_nombre'] ?: basename($rutaArchivo));
+
 header('Content-Type: ' . ($mime[$ext] ?? 'application/octet-stream'));
-header('Content-Disposition: inline; filename="' . basename($doc['archivo_nombre'] ?: $ruta) . '"');
-header('Content-Length: ' . filesize($ruta));
-readfile($ruta);
+header('Content-Disposition: inline; filename="' . $nombreDescarga . '"');
+header('Content-Length: ' . filesize($rutaArchivo));
+header('X-Content-Type-Options: nosniff');
+readfile($rutaArchivo);
+exit;

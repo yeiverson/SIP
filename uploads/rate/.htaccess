@@ -1,0 +1,2 @@
+# Proteger el directorio de rate limiting — acceso web denegado
+Deny from all

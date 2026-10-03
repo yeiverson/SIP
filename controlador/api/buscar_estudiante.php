@@ -1,12 +1,21 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
 
+require_once __DIR__ . '/../../includes/auth_check.php';
+require_once __DIR__ . '/../../includes/functions.php';
+require_once __DIR__ . '/../../includes/RateLimiter.php';
 require_once __DIR__ . '/../../config/database.php';
 
+RateLimiter::check('api', 60, 60);
+iniciar_sesion_segura();
+
+// Verificar autenticación y roles autorizados (Admin, Coordinador, Secretaría, Director)
+if (!isset($_SESSION['usuario_id']) || !in_array((int)($_SESSION['rol'] ?? 0), [1, 2, 4, 7], true)) {
+    json_respuesta(['error' => 'No autorizado'], 403);
+}
+
 if (!isset($_GET['q']) || trim($_GET['q']) === '') {
-    echo json_encode(['error' => 'Parámetro q requerido']);
-    exit();
+    json_respuesta(['error' => 'Parámetro q requerido'], 400);
 }
 
 $q = '%' . trim($_GET['q']) . '%';
@@ -20,8 +29,9 @@ try {
             LIMIT 20");
     $stmt->execute([':q' => $q, ':q2' => $q, ':q3' => $q, ':q4' => $q]);
     $resultados = $stmt->fetchAll();
-    echo json_encode($resultados);
+    
+    json_respuesta($resultados);
 } catch (PDOException $e) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Error en la consulta']);
+    error_log("[SIP API] Error en buscar_estudiante: " . $e->getMessage());
+    json_respuesta(['error' => 'Error al consultar la base de datos'], 500);
 }

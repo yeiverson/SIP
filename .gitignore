@@ -1,3 +1,21 @@
+# Archivos de entorno y credenciales
+.env
+.env.local
+.env.*.local
+
+# Subidas temporales o de prueba (conservar estructura)
+uploads/documentos/*
+!uploads/documentos/.gitkeep
+
+# Backups grandes y temporales
+*.backup
+*.dump
+*.tar.gz
+
+# Logs
+*.log
+error_log
+
 # OS
 Thumbs.db
 .DS_Store
@@ -8,8 +26,3 @@ desktop.ini
 .idea/
 *.swp
 *.swo
-
-# PHP
-*.log
-
-# Ignore individual data files (keep backup_completo.sql in database/)

@@ -1,20 +1,29 @@
 <?php
 
-session_start();
-
-require_once 'config.php';
-require_once 'procesar.php';
+require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/procesar.php';
 require_once __DIR__ . '/includes/queries_usuarios.php';
 
-if (empty($_SESSION['usuario_id']) && empty($_SESSION['user_id'])) {
+iniciar_sesion_segura();
+
+if (empty($_SESSION['usuario_id'])) {
     header('Location: index.php');
     exit;
 }
 
-$userId = (int) ($_SESSION['usuario_id'] ?? $_SESSION['user_id'] ?? 0);
+$userId = (int) $_SESSION['usuario_id'];
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: llenado_de_perfil.php');
+    exit;
+}
+
+// Validar CSRF antes de procesar cualquier dato
+if (!validar_csrf()) {
+    echo '<h1>Error de seguridad</h1>';
+    echo '<p>Token CSRF inválido o expirado. Por favor vuelva a cargar el formulario.</p>';
+    echo "<a href='llenado_de_perfil.php'>Volver</a>";
     exit;
 }
 
@@ -232,8 +241,8 @@ if (empty($lista_errores)) {
         if (!$fila) {
             $lista_errores['sesion'] = 'No se encontró el usuario en sesión.';
         } else {
-            $cedula_form = preg_replace('/\D/', '', (string) ($datos['cedula'] ?? ''));
-            if ((string) $fila['cedula'] !== $cedula_form || $fila['tipo_cedula'] !== ($datos['tipoDocumento'] ?? '')) {
+            $doc_form = trim((string) ($datos['cedula'] ?? ''));
+            if ($fila['numero_documento'] !== $doc_form || $fila['tipo_cedula'] !== ($datos['tipoDocumento'] ?? '')) {
                 $lista_errores['cedula'] = 'La cédula o tipo de documento no coincide con tu cuenta.';
             }
         }

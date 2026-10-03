@@ -10,7 +10,7 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['rol'] !== 7) {
 
 // 2. IMPORTAR CONEXIÓN A POSTGRESQL
 // Subimos dos niveles (../../) para salir de vistas/director/ y entrar a config/
-require_once '../../config/conexion.php';
+require_once __DIR__ . '/../../config/database.php';
 
 $nombre_director = $_SESSION['nombre_full'];
 $mensaje = "";

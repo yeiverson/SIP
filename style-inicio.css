@@ -18,7 +18,7 @@ body, html {
 }
 
 body {
-    background: url('imagenes/FACHADA\ AZULADA.png') no-repeat center center fixed;
+    background: #001a57 url('imagenes/FACHADA_AZULADA.webp') no-repeat center center fixed;
     background-size: cover;
 }
 

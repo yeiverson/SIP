@@ -2,128 +2,197 @@
 require_once __DIR__ . '/../../includes/auth_check.php';
 require_once __DIR__ . '/../../includes/functions.php';
 check_rol(6);
+
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/logs.php';
 
-$usuario_id = $_SESSION['usuario_id'];
-$nombre_est = $_SESSION['nombre_full'];
-$sede_id = $_SESSION['sede_id'];
-$mensaje = '';
+iniciar_sesion_segura();
 
-// Obtener info sede
-$sede_info = $pdo->prepare("SELECT * FROM sedes WHERE id = :id");
-$sede_info->execute([':id' => $sede_id]);
-$sede = $sede_info->fetch();
+$usuario_id = (int)$_SESSION['usuario_id'];
+$nombre_est  = $_SESSION['nombre_full'];
+$sede_id     = (int)($_SESSION['sede_id'] ?? 0);
+$mensaje     = '';
 
-// Obtener datos del estudiante
-$est = $pdo->prepare("SELECT u.*, ROUND(AVG(CASE WHEN an.estatus='Definitiva' THEN an.nota END),1) as promedio,
-                       SUM(CASE WHEN an.estatus='Definitiva' AND an.nota >= 14 THEN asig.uc ELSE 0 END) as uc_aprobadas,
-                       SUM(CASE WHEN an.estatus='Definitiva' AND an.nota < 14 THEN asig.uc ELSE 0 END) as uc_reprobadas
-                       FROM usuarios u
-                       LEFT JOIN inscripciones i ON i.usuario_id = u.id AND i.estatus = 'Formalizada'
-                       LEFT JOIN secciones sec ON sec.id = i.seccion_id
-                       LEFT JOIN asignaturas asig ON asig.codigo = sec.asignatura_codigo
-                       LEFT JOIN actas_notas an ON an.seccion_id = i.seccion_id AND an.usuario_id = u.id AND an.estatus = 'Definitiva'
-                       WHERE u.id = :uid
-                       GROUP BY u.id");
-$est->execute([':uid' => $usuario_id]);
-$estudiante = $est->fetch();
-
-// Créditos resguardados
-$creditos = $pdo->prepare("SELECT SUM(uc_resguardadas) as total FROM creditos_resguardados WHERE usuario_id = :uid AND estatus = 'Activo'");
-$creditos->execute([':uid' => $usuario_id]);
-$cred = $creditos->fetch();
-$uc_resguardadas = (int)($cred['total'] ?? 0);
-
-// Inscripciones activas
-$inscripciones = $pdo->prepare("SELECT i.*, sec.seccion, asig.nombre as materia, asig.codigo as materia_codigo, asig.uc,
-                                s.nombre as sede_nombre, pl.nombre as plan_nombre,
-                                CONCAT(p.tipo_cedula,'-',p.numero_documento,' | ',p.nombres,' ',p.apellidos) as profesor
-                                FROM inscripciones i
-                                JOIN secciones sec ON sec.id = i.seccion_id
-                                JOIN asignaturas asig ON asig.codigo = sec.asignatura_codigo
-                                JOIN sedes s ON s.id = sec.sede_id
-                                JOIN plan_estudios pl ON pl.id = sec.plan_id
-                                LEFT JOIN usuarios p ON p.id = sec.profesor_id
-                                WHERE i.usuario_id = :uid
-                                ORDER BY i.created_at DESC");
-$inscripciones->execute([':uid' => $usuario_id]);
-$inscripciones = $inscripciones->fetchAll();
-
-// Oferta disponible (Fase 2)
-$oferta = [];
-if ($sede && $sede['fase_actual'] == 2) {
-    $oferta = $pdo->prepare("SELECT sec.*, asig.nombre as materia, asig.codigo as materia_codigo, asig.uc,
-                              CONCAT(p.tipo_cedula,'-',p.numero_documento,' | ',p.nombres,' ',p.apellidos) as profesor,
-                              (SELECT COUNT(*) FROM inscripciones i WHERE i.seccion_id = sec.id AND i.estatus != 'Eliminada') as inscritos
-                              FROM secciones sec
-                              JOIN asignaturas asig ON asig.codigo = sec.asignatura_codigo
-                              LEFT JOIN usuarios p ON p.id = sec.profesor_id
-                              WHERE sec.sede_id = :sede AND sec.activa = true
-                              ORDER BY asig.nombre");
-    $oferta->execute([':sede' => $sede_id]);
-    $oferta = $oferta->fetchAll();
+// Obtener info de la sede
+$sede_info = null;
+if ($sede_id > 0) {
+    $stmtS = $pdo->prepare("SELECT * FROM sedes WHERE id = :id");
+    $stmtS->execute([':id' => $sede_id]);
+    $sede_info = $stmtS->fetch();
 }
 
-// Notas
-$notas = $pdo->prepare("SELECT an.*, asig.nombre as materia, asig.codigo as materia_codigo, asig.uc, sec.seccion, pl.nombre as plan_nombre
-                         FROM actas_notas an
-                         JOIN secciones sec ON sec.id = an.seccion_id
-                         JOIN inscripciones i ON i.seccion_id = sec.id AND i.usuario_id = an.usuario_id
-                         JOIN asignaturas asig ON asig.codigo = sec.asignatura_codigo
-                         JOIN plan_estudios pl ON pl.id = sec.plan_id
-                         WHERE an.usuario_id = :uid AND an.estatus = 'Definitiva'
-                         ORDER BY an.updated_at DESC");
-$notas->execute([':uid' => $usuario_id]);
-$notas = $notas->fetchAll();
+// Obtener datos académicos y kardex del estudiante
+$stmtEst = $pdo->prepare("SELECT u.*, s.nombre as sede_nombre, pl.nombre as plan_nombre, pl.codigo as plan_codigo,
+                                 ROUND(AVG(CASE WHEN an.estatus='Definitiva' THEN an.nota END), 2) as promedio_acumulado,
+                                 COALESCE(SUM(CASE WHEN an.estatus='Definitiva' AND an.nota >= 14 THEN asig.uc ELSE 0 END), 0) as uc_aprobadas,
+                                 COALESCE(SUM(CASE WHEN an.estatus='Definitiva' AND an.nota < 14 AND an.nota IS NOT NULL THEN asig.uc ELSE 0 END), 0) as uc_reprobadas
+                          FROM usuarios u
+                          LEFT JOIN sedes s ON s.id = u.sede_id
+                          LEFT JOIN plan_estudios pl ON pl.id = u.plan_id
+                          LEFT JOIN actas_notas an ON an.usuario_id = u.id AND an.estatus = 'Definitiva'
+                          LEFT JOIN secciones sec ON sec.id = an.seccion_id
+                          LEFT JOIN asignaturas asig ON asig.codigo = sec.asignatura_codigo
+                          WHERE u.id = :uid
+                          GROUP BY u.id, s.nombre, pl.nombre, pl.codigo");
+$stmtEst->execute([':uid' => $usuario_id]);
+$estudiante = $stmtEst->fetch();
 
-// Procesar inscripción
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inscribir_materia'])) {
-    $seccion_id = (int)$_POST['seccion_id'];
-    try {
-        $pdo->beginTransaction();
-        // Validar cupo
-        $sec = $pdo->prepare("SELECT cupo_maximo, (SELECT COUNT(*) FROM inscripciones WHERE seccion_id = :sid AND estatus != 'Eliminada') as inscritos FROM secciones WHERE id = :sid2");
-        $sec->execute([':sid' => $seccion_id, ':sid2' => $seccion_id]);
-        $sec_data = $sec->fetch();
-        if ($sec_data['inscritos'] >= $sec_data['cupo_maximo']) {
-            throw new Exception('Sección agotada.');
-        }
-        // Validar choque horario
-        $horarios = $pdo->prepare("SELECT * FROM horarios WHERE seccion_id = :sid");
-        $horarios->execute([':sid' => $seccion_id]);
-        $nuevos_horarios = $horarios->fetchAll();
-        foreach ($inscripciones as $insc) {
-            if ($insc['estatus'] !== 'Eliminada') {
-                $h_exist = $pdo->prepare("SELECT * FROM horarios WHERE seccion_id = :sid");
-                $h_exist->execute([':sid' => $insc['id']]);
-                while ($h = $h_exist->fetch()) {
-                    foreach ($nuevos_horarios as $nh) {
-                        if ($h['dia_semana'] == $nh['dia_semana'] &&
-                            $h['hora_inicio'] < $nh['hora_fin'] &&
-                            $nh['hora_inicio'] < $h['hora_fin']) {
-                            throw new Exception('Choque de horario con ' . $insc['materia']);
+// Créditos resguardados
+$stmtCred = $pdo->prepare("SELECT COALESCE(SUM(uc_resguardadas), 0) as total FROM creditos_resguardados WHERE usuario_id = :uid AND estatus = 'Activo'");
+$stmtCred->execute([':uid' => $usuario_id]);
+$uc_resguardadas = (int)$stmtCred->fetchColumn();
+
+// Procesar acciones POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!validar_csrf()) {
+        $mensaje = alerta_error('Token de seguridad inválido. Recargue la página.');
+    } else {
+        // 1. Inscribir materia
+        if (isset($_POST['inscribir_materia'])) {
+            $seccion_id = (int)$_POST['seccion_id'];
+            try {
+                $pdo->beginTransaction();
+
+                // Validar si ya está inscrita
+                $stmtCheck = $pdo->prepare("SELECT id, estatus FROM inscripciones WHERE usuario_id = :uid AND seccion_id = :sid");
+                $stmtCheck->execute([':uid' => $usuario_id, ':sid' => $seccion_id]);
+                $existeInsc = $stmtCheck->fetch();
+                if ($existeInsc && $existeInsc['estatus'] !== 'Eliminada') {
+                    throw new Exception('Ya posee esta sección inscrita o en proceso de formalización.');
+                }
+
+                // Validar cupo
+                $sec = $pdo->prepare("SELECT cupo_maximo, (SELECT COUNT(*) FROM inscripciones WHERE seccion_id = :sid AND estatus != 'Eliminada') as inscritos FROM secciones WHERE id = :sid2");
+                $sec->execute([':sid' => $seccion_id, ':sid2' => $seccion_id]);
+                $sec_data = $sec->fetch();
+                if ($sec_data && $sec_data['inscritos'] >= $sec_data['cupo_maximo']) {
+                    throw new Exception('La sección seleccionada ha agotado sus cupos disponibles.');
+                }
+
+                // Validar colisión de horarios con materias actualmente activas
+                $stmtHorariosNuevos = $pdo->prepare("SELECT * FROM horarios WHERE seccion_id = :sid");
+                $stmtHorariosNuevos->execute([':sid' => $seccion_id]);
+                $nuevos_horarios = $stmtHorariosNuevos->fetchAll();
+
+                $stmtInscActivas = $pdo->prepare("SELECT seccion_id FROM inscripciones WHERE usuario_id = :uid AND estatus IN ('Formalizada', 'Por Cancelar')");
+                $stmtInscActivas->execute([':uid' => $usuario_id]);
+                $secciones_actuales = $stmtInscActivas->fetchAll(PDO::FETCH_COLUMN);
+
+                foreach ($secciones_actuales as $sec_activa_id) {
+                    $stmtHorariosExistentes = $pdo->prepare("SELECT * FROM horarios WHERE seccion_id = :sid");
+                    $stmtHorariosExistentes->execute([':sid' => $sec_activa_id]);
+                    $horarios_exist = $stmtHorariosExistentes->fetchAll();
+
+                    foreach ($horarios_exist as $he) {
+                        foreach ($nuevos_horarios as $nh) {
+                            if ($he['dia_semana'] == $nh['dia_semana'] &&
+                                $he['hora_inicio'] < $nh['hora_fin'] &&
+                                $nh['hora_inicio'] < $he['hora_fin']) {
+                                throw new Exception('Existe un choque de horario con otra asignatura ya seleccionada.');
+                            }
                         }
                     }
                 }
+
+                // Crear o reactivar inscripción
+                if ($existeInsc && $existeInsc['estatus'] === 'Eliminada') {
+                    $stmtIns = $pdo->prepare("UPDATE inscripciones SET estatus = 'Por Cancelar', updated_at = NOW() WHERE id = :id");
+                    $stmtIns->execute([':id' => $existeInsc['id']]);
+                    $insc_id = $existeInsc['id'];
+                } else {
+                    $stmtIns = $pdo->prepare("INSERT INTO inscripciones (usuario_id, seccion_id, estatus) VALUES (:uid, :sid, 'Por Cancelar') RETURNING id");
+                    $stmtIns->execute([':uid' => $usuario_id, ':sid' => $seccion_id]);
+                    $insc_id = $stmtIns->fetchColumn();
+                }
+
+                $pdo->commit();
+                registrar_log($pdo, 'Inscripción materia', 'inscripciones', $insc_id, "Estudiante $usuario_id seleccionó sección $seccion_id");
+                $mensaje = alerta_success('Asignatura seleccionada correctamente. Reporte su pago en la pestaña correspondiente para formalizarla.');
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                $mensaje = alerta_error($e->getMessage());
             }
         }
-        // Crear inscripción
-        $stmt = $pdo->prepare("INSERT INTO inscripciones (usuario_id, seccion_id, estatus) VALUES (:uid, :sid, 'Por Cancelar')");
-        $stmt->execute([':uid' => $usuario_id, ':sid' => $seccion_id]);
-        $pdo->commit();
-        registrar_log($pdo, 'Inscripción materia', 'inscripciones', $pdo->lastInsertId());
-        $mensaje = alerta_success('Materia seleccionada. Estado: POR CANCELAR. Diríjase a Secretaría para formalizar el pago.');
-        // Recargar
-        $inscripciones->execute([':uid' => $usuario_id]);
-        $inscripciones = $inscripciones->fetchAll();
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        $mensaje = alerta_error($e->getMessage());
+        // 2. Registrar comprobante de pago por transferencia o pago móvil
+        elseif (isset($_POST['reportar_pago'])) {
+            $referencia = trim($_POST['referencia'] ?? '');
+            $banco = trim($_POST['banco'] ?? '');
+            $monto = (float)($_POST['monto'] ?? 0);
+            $fecha = $_POST['fecha_pago'] ?? date('Y-m-d');
+
+            if ($referencia && $banco && $monto > 0) {
+                try {
+                    $stmt = $pdo->prepare("INSERT INTO pagos (usuario_id, banco, referencia, monto, fecha_pago)
+                            VALUES (:uid, :banco, :ref, :monto, :fp) RETURNING id");
+                    $stmt->execute([
+                        ':uid'   => $usuario_id,
+                        ':banco' => $banco,
+                        ':ref'   => $referencia,
+                        ':monto' => $monto,
+                        ':fp'    => $fecha,
+                    ]);
+                    $pago_id = $stmt->fetchColumn();
+                    registrar_log($pdo, 'Reporte de pago estudiante', 'pagos', $pago_id, "Ref: $referencia, Monto: $monto");
+                    $mensaje = alerta_success("¡Pago reportado con éxito! El personal de Secretaría validará la referencia '$referencia' para formalizar su inscripción.");
+                } catch (PDOException $e) {
+                    $mensaje = ($e->getCode() === '23505')
+                        ? alerta_error("Esta referencia bancaria ya ha sido registrada previamente en el sistema.")
+                        : alerta_error('Error al registrar el pago: ' . $e->getMessage());
+                }
+            } else {
+                $mensaje = alerta_error('Por favor complete todos los datos requeridos para registrar el pago.');
+            }
+        }
     }
 }
 
-$titulo = 'Panel Estudiante';
+// Inscripciones activas del estudiante
+$stmtInsc = $pdo->prepare("SELECT i.*, sec.seccion, sec.aula, asig.nombre as materia, asig.codigo as materia_codigo, asig.uc,
+                                  s.nombre as sede_nombre, pl.nombre as plan_nombre,
+                                  CONCAT(p.tipo_cedula, '-', p.numero_documento, ' | ', p.nombres, ' ', p.apellidos) as profesor
+                           FROM inscripciones i
+                           JOIN secciones sec ON sec.id = i.seccion_id
+                           JOIN asignaturas asig ON asig.codigo = sec.asignatura_codigo
+                           JOIN sedes s ON s.id = sec.sede_id
+                           JOIN plan_estudios pl ON pl.id = sec.plan_id
+                           LEFT JOIN usuarios p ON p.id = sec.profesor_id
+                           WHERE i.usuario_id = :uid AND i.estatus != 'Eliminada'
+                           ORDER BY i.created_at DESC");
+$stmtInsc->execute([':uid' => $usuario_id]);
+$inscripciones = $stmtInsc->fetchAll();
+
+// Oferta académica disponible (si la sede está en Fase 2 de inscripciones)
+$faseActual = (int)($sede_info['fase_actual'] ?? 1);
+$oferta = [];
+if ($sede_id > 0 && $faseActual === 2) {
+    $stmtOferta = $pdo->prepare("SELECT sec.*, asig.nombre as materia, asig.codigo as materia_codigo, asig.uc,
+                                        CONCAT(p.nombres, ' ', p.apellidos) as profesor,
+                                        (SELECT COUNT(*) FROM inscripciones i WHERE i.seccion_id = sec.id AND i.estatus != 'Eliminada') as inscritos
+                                 FROM secciones sec
+                                 JOIN asignaturas asig ON asig.codigo = sec.asignatura_codigo
+                                 LEFT JOIN usuarios p ON p.id = sec.profesor_id
+                                 WHERE sec.sede_id = :sede AND sec.activa = true
+                                 ORDER BY asig.nombre");
+    $stmtOferta->execute([':sede' => $sede_id]);
+    $oferta = $stmtOferta->fetchAll();
+}
+
+// Historial de notas consolidadas (Kardex)
+$stmtNotas = $pdo->prepare("SELECT an.*, asig.nombre as materia, asig.codigo as materia_codigo, asig.uc, sec.seccion, sec.periodo
+                            FROM actas_notas an
+                            JOIN secciones sec ON sec.id = an.seccion_id
+                            JOIN asignaturas asig ON asig.codigo = sec.asignatura_codigo
+                            WHERE an.usuario_id = :uid AND an.estatus = 'Definitiva'
+                            ORDER BY an.updated_at DESC");
+$stmtNotas->execute([':uid' => $usuario_id]);
+$notas = $stmtNotas->fetchAll();
+
+// Pagos registrados del estudiante
+$stmtMisPagos = $pdo->prepare("SELECT * FROM pagos WHERE usuario_id = :uid ORDER BY created_at DESC");
+$stmtMisPagos->execute([':uid' => $usuario_id]);
+$mis_pagos = $stmtMisPagos->fetchAll();
+
+$titulo = 'Portal del Estudiante';
 require_once __DIR__ . '/../../includes/template_header.php';
 ?>
 <div class="dashboard-container">
@@ -132,224 +201,325 @@ require_once __DIR__ . '/../../includes/template_header.php';
             <img class="logo-img" src="<?php echo obtener_ruta_base(); ?>imagenes/LOGO-1-1.png" alt="UNEFA">
             <div class="sidebar-brand">
                 <h3>SIP-Postgrado</h3>
-                <span class="brand-sub">UNEFA</span>
+                <span class="brand-sub">Estudiante Regular</span>
             </div>
             <p><?php echo h($nombre_est); ?></p>
-            <p><small><?php echo h($sede['nombre'] ?? 'Sin sede'); ?></small></p>
+            <p><small><?php echo h($sede_info['nombre'] ?? 'Sede Central'); ?></small></p>
         </div>
         <nav class="sidebar-menu">
-            <a href="dashboard.php" class="active" data-modulo="inicio"><span>📊 Inicio</span></a>
-            <a href="#modulo-inscripcion" data-modulo="inscripcion"><span>📝 Inscripción</span></a>
-            <a href="#modulo-horario" data-modulo="horario"><span>📅 Mi Horario</span></a>
-            <a href="#modulo-notas" data-modulo="notas"><span>📋 Mis Notas</span></a>
+            <a href="dashboard.php" class="active" data-modulo="inicio"><span>🏠 Mi Expediente</span></a>
+            <a href="#modulo-inscripciones" data-modulo="inscripciones"><span>📝 Inscripción de Materias</span></a>
+            <a href="#modulo-pagos" data-modulo="pagos"><span>💳 Registro de Pagos</span></a>
+            <a href="#modulo-kardex" data-modulo="kardex"><span>📊 Historial Académico</span></a>
             <a href="../../controlador/cerrar_sesion.php" class="logout-btn"><span>🚪 Cerrar Sesión</span></a>
         </nav>
     </aside>
 
     <main class="main-content">
         <header class="main-header">
-            <h2>Portal del Estudiante</h2>
-            <p><?php echo fecha_hoy_formateada(); ?>
-               &middot; Sede: <?php echo h($sede['nombre'] ?? 'N/A'); ?>
-               &middot; Fase: <?php echo ($sede['fase_actual']??1) == 2 ? 'Inscripciones Abiertas' : 'Planificación'; ?>
-            </p>
+            <div>
+                <h2>Portal Académico del Estudiante</h2>
+                <p>Programa: <strong><?php echo h($estudiante['plan_nombre'] ?? 'Postgrado UNEFA'); ?></strong> &middot; <?php echo fecha_hoy_formateada(); ?></p>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <a href="../../controlador/reportes.php?tipo=constancia_estudio" target="_blank" class="btn-print-doc btn-sm">
+                    📜 Constancia de Estudio
+                </a>
+                <a href="../../controlador/reportes.php?tipo=comprobante_inscripcion" target="_blank" class="btn-outline btn-sm">
+                    📑 Comprobante Oficial
+                </a>
+            </div>
         </header>
 
         <?php echo $mensaje; ?>
 
-        <section id="modulo-inicio" class="module-section">
-            <div class="stats-row">
-                <div class="stat-card">
-                    <div class="stat-icon blue">🎓</div>
-                    <div class="stat-info">
-                        <strong><?php echo (int)$estudiante['uc_aprobadas']; ?> UC</strong>
-                        <span>Aprobadas</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon gold">📊</div>
-                    <div class="stat-info">
-                        <strong><?php echo $estudiante['promedio'] ?? '—'; ?></strong>
-                        <span>Promedio General</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon green">✅</div>
-                    <div class="stat-info">
-                        <strong><?php echo count(array_filter($inscripciones, fn($i) => $i['estatus'] === 'Formalizada')); ?></strong>
-                        <span>Materias Formalizadas</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon <?php echo $uc_resguardadas > 0 ? 'red' : 'green'; ?>">💰</div>
-                    <div class="stat-info">
-                        <strong><?php echo $uc_resguardadas > 0 ? $uc_resguardadas . ' UC' : '—'; ?></strong>
-                        <span><?php echo $uc_resguardadas > 0 ? 'Créditos Resguardados' : 'Sin saldos'; ?></span>
-                    </div>
+        <!-- METRICAS ACADÉMICAS -->
+        <div class="stats-grid">
+            <div class="stat-card gold">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-details">
+                    <span class="stat-val"><?php echo $estudiante['promedio_acumulado'] ? number_format($estudiante['promedio_acumulado'], 2) : '—'; ?></span>
+                    <span class="stat-lbl">Promedio Ponderado</span>
                 </div>
             </div>
-
+            <div class="stat-card success">
+                <div class="stat-icon">🎓</div>
+                <div class="stat-details">
+                    <span class="stat-val"><?php echo $estudiante['uc_aprobadas']; ?> UC</span>
+                    <span class="stat-lbl">Créditos Aprobados</span>
+                </div>
+            </div>
+            <div class="stat-card info">
+                <div class="stat-icon">📚</div>
+                <div class="stat-details">
+                    <span class="stat-val"><?php echo count($inscripciones); ?></span>
+                    <span class="stat-lbl">Materias en Curso</span>
+                </div>
+            </div>
             <?php if ($uc_resguardadas > 0): ?>
-            <div class="alert alert-warning">
-                ⚠️ Posee <strong><?php echo $uc_resguardadas; ?> UC Resguardadas</strong> del lapso anterior.
-                Este saldo se descontará automáticamente al inscribir nuevas materias.
+            <div class="stat-card warning">
+                <div class="stat-icon">🛡️</div>
+                <div class="stat-details">
+                    <span class="stat-val"><?php echo $uc_resguardadas; ?> UC</span>
+                    <span class="stat-lbl">Créditos Resguardados</span>
+                </div>
             </div>
             <?php endif; ?>
-        </section>
+        </div>
 
-        <!-- INSCRIPCIÓN -->
-        <section id="modulo-inscripcion" class="module-section" style="display:none;">
-            <?php if (($sede['fase_actual']??1) != 2): ?>
-                <div class="alert alert-info">El proceso de inscripción aún no ha iniciado en su sede.</div>
-            <?php else: ?>
-            <h3>📝 Portal de Inscripción Interactiva</h3>
-            <p style="color:#666;margin-bottom:15px;">
-                Seleccione las materias que desea cursar.
-                <?php if ($uc_resguardadas > 0): ?>
-                <br>✅ Tiene <strong><?php echo $uc_resguardadas; ?> UC Resguardadas</strong> a su favor.
-                <?php endif; ?>
-            </p>
-
-            <?php if (count($oferta) === 0): ?>
-                <div class="alert alert-info">No hay oferta académica disponible para esta sede.</div>
-            <?php else: ?>
-            <div class="form-grid-2">
-                <?php foreach ($oferta as $mat): ?>
-                <?php
-                    $ya_inscrito = false;
-                    foreach ($inscripciones as $insc) {
-                        if ($insc['id'] == $mat['id'] || $insc['materia_codigo'] == $mat['materia_codigo']) {
-                            if ($insc['estatus'] !== 'Eliminada') { $ya_inscrito = true; break; }
-                        }
-                    }
-                    $disponible = $mat['inscritos'] < $mat['cupo_maximo'];
-                ?>
-                <div class="module-card" style="<?php echo $ya_inscrito ? 'opacity:0.6;' : ($disponible ? '' : 'opacity:0.4;'); ?>">
-                    <div class="module-icon">📚</div>
-                    <h3><?php echo h($mat['materia']); ?></h3>
-                    <p>
-                        Sección <?php echo h($mat['seccion']); ?> &middot; <?php echo $mat['uc']; ?> UC<br>
-                        Prof: <?php echo h($mat['profesor'] ?? 'Por asignar'); ?><br>
-                        Cupos: <?php echo $mat['inscritos']; ?>/<?php echo $mat['cupo_maximo']; ?>
-                    </p>
-                    <?php if ($ya_inscrito): ?>
-                        <span class="badge badge-inscripcion" style="margin-top:8px;display:inline-block;">✅ Inscrito</span>
-                    <?php elseif (!$disponible): ?>
-                        <span class="badge badge-planar" style="margin-top:8px;display:inline-block;background:#e74c3c;color:white;">❌ Sección Agotada</span>
+        <!-- ===== ASIGNATURAS INSCRITAS ESTE PERÍODO ===== -->
+        <section id="modulo-inicio" class="module-section">
+            <div class="dashboard-card">
+                <div class="dashboard-card-header">
+                    <h3>📚 Mis Asignaturas en el Período Actual</h3>
+                </div>
+                <div class="dashboard-card-body">
+                    <?php if (count($inscripciones) === 0): ?>
+                        <div class="alert alert-info">Actualmente no posee asignaturas inscritas. Ingrese a la sección de "Inscripción de Materias" para seleccionar su carga académica.</div>
                     <?php else: ?>
-                        <form method="POST" style="margin-top:8px;">
-                            <input type="hidden" name="seccion_id" value="<?php echo $mat['id']; ?>">
-                            <button type="submit" name="inscribir_materia" class="btn-action btn-green">➕ Seleccionar</button>
-                        </form>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Asignatura</th>
+                                    <th>Sección</th>
+                                    <th>U.C.</th>
+                                    <th>Aula</th>
+                                    <th>Docente Asignado</th>
+                                    <th style="text-align:center;">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($inscripciones as $i): ?>
+                                <tr>
+                                    <td><strong><?php echo h($i['materia_codigo']); ?></strong></td>
+                                    <td><?php echo h($i['materia']); ?></td>
+                                    <td>Sec. <?php echo h($i['seccion']); ?></td>
+                                    <td><strong><?php echo $i['uc']; ?> UC</strong></td>
+                                    <td><?php echo h($i['aula'] ?: 'Virtual'); ?></td>
+                                    <td><?php echo h($i['profesor'] ?: 'Por designar'); ?></td>
+                                    <td style="text-align:center;">
+                                        <?php if ($i['estatus'] === 'Formalizada'): ?>
+                                            <span class="badge badge-success">🟢 Formalizada</span>
+                                        <?php elseif ($i['estatus'] === 'Por Cancelar'): ?>
+                                            <span class="badge badge-warning">🟡 Por Cancelar</span>
+                                        <?php else: ?>
+                                            <span class="badge badge-navy"><?php echo h($i['estatus']); ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
                     <?php endif; ?>
                 </div>
-                <?php endforeach; ?>
             </div>
-            <?php endif; ?>
-            <?php endif; ?>
-
-            <h3 style="margin-top:25px;">Mis Materias Seleccionadas</h3>
-            <table class="data-table">
-                <thead>
-                    <tr><th>Materia</th><th>Sección</th><th>Profesor</th><th>UC</th><th>Estado</th></tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($inscripciones as $insc): ?>
-                    <tr>
-                        <td><?php echo h($insc['materia']); ?></td>
-                        <td><?php echo h($insc['seccion']); ?></td>
-                        <td><?php echo h($insc['profesor'] ?? '—'); ?></td>
-                        <td><?php echo $insc['uc']; ?> UC</td>
-                        <td>
-                            <?php if ($insc['estatus'] === 'Por Cancelar'): ?>
-                                <span class="badge badge-planar">🟡 POR CANCELAR</span>
-                            <?php elseif ($insc['estatus'] === 'Formalizada'): ?>
-                                <span class="badge badge-inscripcion">🟢 FORMALIZADA</span>
-                            <?php elseif ($insc['estatus'] === 'Eliminada'): ?>
-                                <span class="badge" style="background:#e74c3c;color:white;">🔴 ELIMINADA</span>
-                            <?php else: ?>
-                                <span><?php echo h($insc['estatus']); ?></span>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-            <p style="margin-top:10px;color:#999;font-size:0.8rem;">
-                ⚠️ Inscripción registrada. Para realizar cambios de materia, secciones o corrección de errores, diríjase a la taquilla de Secretaría.
-            </p>
         </section>
 
-        <!-- HORARIO -->
-        <section id="modulo-horario" class="module-section" style="display:none;">
-            <h3>📅 Mi Horario Consolidado</h3>
-            <?php
-            $dias_semana = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-            $horario_grid = [];
-            $formalizadas = array_filter($inscripciones, fn($i) => $i['estatus'] === 'Formalizada' || $i['estatus'] === 'Por Cancelar');
-            ?>
-            <table class="data-table">
-                <thead>
-                    <tr><th>Día</th><th>Materia</th><th>Horario</th><th>Aula</th><th>Profesor</th></tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($formalizadas as $insc): ?>
-                    <?php
-                    $hors = $pdo->prepare("SELECT h.* FROM horarios h WHERE h.seccion_id = :sid");
-                    $hors->execute([':sid' => $insc['id']]);
-                    while ($h = $hors->fetch()):
-                    ?>
-                    <tr>
-                        <td><strong><?php echo $dias_semana[$h['dia_semana']] ?? ''; ?></strong></td>
-                        <td><?php echo h($insc['materia']); ?> (<?php echo h($insc['seccion']); ?>)</td>
-                        <td><?php echo substr($h['hora_inicio'],0,5); ?> - <?php echo substr($h['hora_fin'],0,5); ?></td>
-                        <td><?php echo h($insc['seccion']); ?></td>
-                        <td><?php echo h($insc['profesor'] ?? '—'); ?></td>
-                    </tr>
-                    <?php endwhile; ?>
-                    <?php endforeach; ?>
-                    <?php if (count($formalizadas) === 0): ?>
-                    <tr><td colspan="5" class="text-center">No tiene materias inscritas.</td></tr>
+        <!-- ===== MÓDULO: OFERTA E INSCRIPCIÓN ===== -->
+        <section id="modulo-inscripciones" class="module-section">
+            <div class="dashboard-card">
+                <div class="dashboard-card-header">
+                    <h3>📝 Oferta Académica Disponible para Inscripción</h3>
+                    <span class="badge <?php echo $faseActual === 2 ? 'badge-success' : 'badge-warning'; ?>">
+                        <?php echo $faseActual === 2 ? '🟢 Fase 2: Inscripciones Abiertas' : '🟡 Fase 1: Período de Planificación (Inscripciones Cerradas)'; ?>
+                    </span>
+                </div>
+                <div class="dashboard-card-body">
+                    <?php if ($faseActual !== 2): ?>
+                        <div class="alert alert-warning">
+                            El período formal de inscripciones para su sede aún no está abierto. El Coordinador de Programa está estructurando la oferta académica. Esté atento a los comunicados oficiales.
+                        </div>
+                    <?php elseif (count($oferta) === 0): ?>
+                        <div class="alert alert-info">No se encontraron secciones activas ofertadas para su sede en este momento.</div>
+                    <?php else: ?>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Asignatura</th>
+                                        <th>Sección</th>
+                                        <th>U.C.</th>
+                                        <th>Docente</th>
+                                        <th>Cupos</th>
+                                        <th style="text-align:center;">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($oferta as $sec): ?>
+                                    <?php 
+                                    $yaInscrita = false;
+                                    foreach ($inscripciones as $ins) {
+                                        if ((int)$ins['seccion_id'] === (int)$sec['id']) {
+                                            $yaInscrita = true;
+                                            break;
+                                        }
+                                    }
+                                    $sinCupo = ($sec['inscritos'] >= $sec['cupo_maximo']);
+                                    ?>
+                                    <tr>
+                                        <td><strong><?php echo h($sec['materia_codigo']); ?></strong></td>
+                                        <td><?php echo h($sec['materia']); ?></td>
+                                        <td>Sec. <?php echo h($sec['seccion']); ?></td>
+                                        <td><strong><?php echo $sec['uc']; ?> UC</strong></td>
+                                        <td><?php echo h($sec['profesor'] ?: 'Por designar'); ?></td>
+                                        <td><?php echo $sec['inscritos']; ?> / <?php echo $sec['cupo_maximo']; ?></td>
+                                        <td style="text-align:center;">
+                                            <?php if ($yaInscrita): ?>
+                                                <span class="badge badge-success">✓ Seleccionada</span>
+                                            <?php elseif ($sinCupo): ?>
+                                                <span class="badge badge-danger">Agotada</span>
+                                            <?php else: ?>
+                                                <form method="POST" style="display:inline;">
+                                                    <?php echo csrf_field(); ?>
+                                                    <input type="hidden" name="inscribir_materia" value="1">
+                                                    <input type="hidden" name="seccion_id" value="<?php echo $sec['id']; ?>">
+                                                    <button type="submit" class="btn-primary btn-sm">➕ Seleccionar</button>
+                                                </form>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
                     <?php endif; ?>
-                </tbody>
-            </table>
+                </div>
+            </div>
         </section>
 
-        <!-- NOTAS -->
-        <section id="modulo-notas" class="module-section" style="display:none;">
-            <h3>📋 Historial de Calificaciones</h3>
-            <?php if (count($notas) === 0): ?>
-                <div class="alert alert-info">Aún no tiene calificaciones registradas.</div>
-            <?php else: ?>
-            <table class="data-table">
-                <thead>
-                    <tr><th>Materia</th><th>Plan</th><th>UC</th><th>Nota</th><th>Estado</th></tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($notas as $n): ?>
-                    <tr>
-                        <td><?php echo h($n['materia']); ?></td>
-                        <td><?php echo h($n['plan_nombre']); ?></td>
-                        <td><?php echo $n['uc']; ?> UC</td>
-                        <td><strong style="font-size:1.2rem;"><?php echo $n['inasistencia'] ? 'N/S' : ($n['nota'] ?? '—'); ?></strong></td>
-                        <td>
-                            <?php if ($n['inasistencia']): ?>
-                                <span class="badge badge-planar" style="background:#e74c3c;color:white;">Inasistente</span>
-                            <?php elseif ($n['nota'] >= 14): ?>
-                                <span class="badge badge-inscripcion">✅ Aprobado</span>
-                            <?php elseif ($n['nota'] !== null): ?>
-                                <span class="badge badge-planar" style="background:#e74c3c;color:white;">❌ Reprobado</span>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-            <?php endif; ?>
+        <!-- ===== MÓDULO: REPORTE DE PAGOS ===== -->
+        <section id="modulo-pagos" class="module-section">
+            <div class="dashboard-card">
+                <div class="dashboard-card-header">
+                    <h3>💳 Registro y Comprobación de Pagos de Arancel</h3>
+                </div>
+                <div class="dashboard-card-body">
+                    <p style="color:#666;font-size:0.85rem;margin-bottom:16px;">
+                        Reporte los datos de la transferencia o pago móvil efectuado para que el departamento de Control de Estudios valide y formalice sus asignaturas inscritas.
+                    </p>
+                    <form method="POST" style="background:#f8fafc;padding:20px;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:24px;">
+                        <?php echo csrf_field(); ?>
+                        <input type="hidden" name="reportar_pago" value="1">
+                        <div class="form-grid-3">
+                            <div class="input-group">
+                                <label>Banco Emisor / Modalidad:</label>
+                                <select name="banco" required>
+                                    <option value="Banco de Venezuela">Banco de Venezuela</option>
+                                    <option value="Banco Bicentenario">Banco Bicentenario</option>
+                                    <option value="Banco Mercantil">Banco Mercantil</option>
+                                    <option value="Banesco">Banesco</option>
+                                    <option value="Banco Provincial">Banco Provincial</option>
+                                    <option value="Pago Móvil Interbancario">Pago Móvil Interbancario</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Número de Referencia Bancaria:</label>
+                                <input type="text" name="referencia" placeholder="Ej: 98765432" required>
+                            </div>
+                            <div class="input-group">
+                                <label>Monto Pagado (Bs.):</label>
+                                <input type="number" step="0.01" name="monto" placeholder="0.00" required>
+                            </div>
+                        </div>
+                        <div class="form-grid-2">
+                            <div class="input-group">
+                                <label>Fecha de la Operación:</label>
+                                <input type="date" name="fecha_pago" value="<?php echo date('Y-m-d'); ?>" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-success">📨 Registrar Pago de Inscripción</button>
+                    </form>
+
+                    <h4>Historial de Pagos Registrados</h4>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Banco</th>
+                                    <th>Referencia</th>
+                                    <th>Monto</th>
+                                    <th>Estado de Validación</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (count($mis_pagos) === 0): ?>
+                                <tr><td colspan="5" class="text-center">No tiene pagos registrados en el sistema.</td></tr>
+                                <?php else: ?>
+                                <?php foreach ($mis_pagos as $p): ?>
+                                <tr>
+                                    <td><?php echo formatear_fecha($p['fecha_pago'] ?? $p['created_at']); ?></td>
+                                    <td><?php echo h($p['banco'] ?: 'Transferencia'); ?></td>
+                                    <td><strong><?php echo h($p['referencia'] ?: ($p['referencia_bancaria'] ?? '—')); ?></strong></td>
+                                    <td>Bs. <?php echo number_format((float)$p['monto'], 2, ',', '.'); ?></td>
+                                    <td>
+                                        <span class="badge badge-success">✓ Registrado en Sistema</span>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== MÓDULO: KARDEX ACADÉMICO ===== -->
+        <section id="modulo-kardex" class="module-section">
+            <div class="dashboard-card">
+                <div class="dashboard-card-header">
+                    <h3>📊 Kardex Académico Oficial y Calificaciones Obtenidas</h3>
+                </div>
+                <div class="dashboard-card-body">
+                    <?php if (count($notas) === 0): ?>
+                        <p class="text-muted" style="text-align:center;padding:20px 0;">Aún no posee actas definitivas de calificación consolidadas para este programa.</p>
+                    <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Asignatura Cursada</th>
+                                    <th>Sección / Período</th>
+                                    <th>U.C.</th>
+                                    <th style="text-align:center;">Nota (0-20)</th>
+                                    <th style="text-align:center;">Condición</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($notas as $not): ?>
+                                <tr>
+                                    <td><strong><?php echo h($not['materia_codigo']); ?></strong></td>
+                                    <td><?php echo h($not['materia']); ?></td>
+                                    <td>Sec. <?php echo h($not['seccion']); ?> (<?php echo h($not['periodo'] ?: '2026-I'); ?>)</td>
+                                    <td><?php echo $not['uc']; ?> UC</td>
+                                    <td style="text-align:center;font-size:1.1rem;font-weight:bold;">
+                                        <?php echo $not['inasistencia'] ? 'N/S' : sprintf('%02d', $not['nota']); ?>
+                                    </td>
+                                    <td style="text-align:center;">
+                                        <?php if ($not['inasistencia']): ?>
+                                            <span class="badge badge-danger">Inasistente</span>
+                                        <?php elseif ($not['nota'] >= 14): ?>
+                                            <span class="badge badge-success">Aprobado</span>
+                                        <?php else: ?>
+                                            <span class="badge badge-danger">Reprobado</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
         </section>
     </main>
 </div>
-
-</script>
 
 <?php require_once __DIR__ . '/../../includes/template_footer.php'; ?>

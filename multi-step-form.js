@@ -276,7 +276,7 @@ function initRegistroAjax(form) {
                 }
                 if (data.status === 'success') {
                     alert('¡Usuario creado con éxito! Ahora ingresa con tu cédula y clave para completar tus datos.');
-                    window.location.href = 'Inicio.php?registro=exitoso';
+                    window.location.href = 'index.php?registro=exitoso';
                 } else {
                     alert('Error: ' + (data.message || 'No se pudo registrar.'));
                 }

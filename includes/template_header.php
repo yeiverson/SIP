@@ -24,6 +24,17 @@ $css_extra = $css_extra ?? '';
     <?php if (!empty($css_extra)): ?>
     <style><?php echo $css_extra; ?></style>
     <?php endif; ?>
+    <!-- Anti-FOUC: aplica el tema antes del primer paint -->
+    <script>
+        (function() {
+            try {
+                var t = localStorage.getItem('sip_theme');
+                if (t === 'dark') {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+            } catch(e) {}
+        })();
+    </script>
 </head>
 <body class="unefa-body">
 <header class="unefa-topbar">
@@ -38,4 +49,31 @@ $css_extra = $css_extra ?? '';
         <span class="eyebrow">Programa de Postgrado</span>
         <strong>SIP - Sistema Integral de Postgrado</strong>
     </div>
+    <!-- Dark mode toggle -->
+    <button id="btn-theme-toggle" class="btn-theme-toggle" title="Cambiar tema" aria-label="Cambiar tema claro/oscuro">🌙</button>
 </header>
+<script>
+    // Dark mode toggle — persiste en localStorage
+    (function() {
+        var btn = document.getElementById('btn-theme-toggle');
+        if (!btn) return;
+
+        function getTheme() {
+            try { return localStorage.getItem('sip_theme') || 'light'; } catch(e) { return 'light'; }
+        }
+
+        function setTheme(t) {
+            try { localStorage.setItem('sip_theme', t); } catch(e) {}
+            document.documentElement.setAttribute('data-theme', t);
+            btn.textContent = (t === 'dark') ? '☀️' : '🌙';
+            btn.title = (t === 'dark') ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro';
+        }
+
+        // Sincronizar al cargar
+        setTheme(getTheme());
+
+        btn.addEventListener('click', function() {
+            setTheme(getTheme() === 'dark' ? 'light' : 'dark');
+        });
+    })();
+</script>

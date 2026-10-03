@@ -13,7 +13,7 @@ if (!function_exists('query_usuario_por_id')) {
      */
     function query_usuario_por_id($pdo, $id)
     {
-        $stmt = $pdo->prepare('SELECT cedula, tipo_cedula, email FROM usuarios WHERE id = :id LIMIT 1');
+        $stmt = $pdo->prepare('SELECT numero_documento, tipo_cedula, email FROM usuarios WHERE id = :id LIMIT 1');
         $stmt->execute([':id' => $id]);
         $fila = $stmt->fetch(PDO::FETCH_ASSOC);
         return $fila ? $fila : false;
@@ -30,12 +30,13 @@ if (!function_exists('query_insertar_usuario_registro')) {
      */
     function query_insertar_usuario_registro($pdo, $params)
     {
-        $sql = 'INSERT INTO usuarios (cedula, tipo_cedula, nombres, apellidos, email, password, telefono, direccion) 
-                VALUES (:ci, :tipo, :nom, :ape, :mail, :pass, :tel, :dir)';
+        $sql = 'INSERT INTO usuarios (cedula, tipo_cedula, numero_documento, nombres, apellidos, email, password, telefono, direccion) 
+                VALUES (:ci, :tipo, :ndoc, :nom, :ape, :mail, :pass, :tel, :dir)';
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             ':ci'   => $params['cedula_limpia'],
             ':tipo' => $params['tipo'],
+            ':ndoc' => $params['numero_documento'] ?? (string) $params['cedula_limpia'],
             ':nom'  => 'Pendiente',
             ':ape'  => 'Pendiente',
             ':mail' => $params['email'],

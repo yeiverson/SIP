@@ -9,7 +9,7 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['rol'] !== 7) {
 }
 
 // 2. CONEXIÓN A TU BASE DE DATOS EXISTENTE
-require_once '../../config/conexion.php';
+require_once __DIR__ . '/../../config/database.php';
 
 $nombre_director = $_SESSION['nombre_full'];
 $mensaje = "";

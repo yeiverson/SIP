@@ -25,4 +25,11 @@ if (!defined('APP_TIMEZONE')) {
 
 date_default_timezone_set(APP_TIMEZONE);
 
+// Autoloader PSR-4 nativo — carga automática de modelos e includes
+require_once __DIR__ . '/includes/autoloader.php';
+
+// Logger de archivo — disponible en toda la aplicación
+require_once __DIR__ . '/includes/Logger.php';
+
 require_once __DIR__ . '/config/database.php';
+

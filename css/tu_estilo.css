@@ -16,13 +16,15 @@
     --radius-sm: 10px;
     --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --glass-blur: 12px;
+    /* Dark mode transition */
+    --dm-transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
     font-family: 'Montserrat', sans-serif;
-    background: url('../imagenes/FACHADA AZULADA.png') no-repeat center center fixed;
+    background: #001a57 url('../imagenes/FACHADA_AZULADA.webp') no-repeat center center fixed;
     background-size: cover;
     color: var(--text);
     line-height: 1.5;
@@ -460,4 +462,108 @@ body::before {
     -webkit-backdrop-filter: blur(8px);
     border-top: 1px solid rgba(255,255,255,0.06);
     margin-top: 28px;
+}
+
+/* ============================================================
+   DARK MODE — [data-theme="dark"]
+   Activado por JS vía localStorage:sip_theme = 'dark'
+   ============================================================ */
+[data-theme="dark"] {
+    --bg: #0f1117;
+    --card-bg: rgba(22, 27, 46, 0.92);
+    --card-border: rgba(255, 255, 255, 0.06);
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --border: #2d3748;
+    --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] body {
+    background-image: none;
+    background-color: #0f1117;
+}
+[data-theme="dark"] body::before {
+    background: rgba(0, 0, 0, 0.75);
+}
+
+/* Cards en modo oscuro */
+[data-theme="dark"] .card,
+[data-theme="dark"] .dashboard-card {
+    background: var(--card-bg);
+    border-color: var(--card-border);
+    color: var(--text);
+}
+[data-theme="dark"] .main-header {
+    background: rgba(22, 27, 46, 0.92);
+    border-color: rgba(255,255,255,0.06);
+}
+[data-theme="dark"] .main-header h2 { color: #93c5fd; }
+
+/* Inputs */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+    background: #1e2432;
+    color: var(--text);
+    border-color: var(--border);
+}
+[data-theme="dark"] input::placeholder { color: #64748b; }
+
+/* Tablas */
+[data-theme="dark"] .data-table { background: #161b2e; color: var(--text); }
+[data-theme="dark"] .data-table th { background: #1e2433; color: #94a3b8; border-color: #2d3748; }
+[data-theme="dark"] .data-table td { border-color: #2d3748; }
+[data-theme="dark"] .data-table tbody tr:hover { background: #1e2744; }
+
+/* Paginación */
+[data-theme="dark"] .pagination-link {
+    background: #1e2432;
+    border-color: #2d3748;
+    color: #94a3b8;
+}
+[data-theme="dark"] .pagination-link.active {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    color: #fff;
+}
+
+/* Modales */
+[data-theme="dark"] .modal-container { background: #161b2e; color: var(--text); }
+[data-theme="dark"] .modal-footer { background: #1e2433; }
+
+/* Topbar */
+[data-theme="dark"] .unefa-topbar {
+    background: rgba(10, 13, 30, 0.97);
+    border-color: rgba(255,255,255,0.04);
+}
+
+/* Badges */
+[data-theme="dark"] .badge-navy { background: #1d4ed8; }
+
+/* Dark mode toggle button */
+.btn-theme-toggle {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.25s ease;
+    line-height: 1;
+    padding: 0;
+    flex-shrink: 0;
+}
+.btn-theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.22);
+    transform: scale(1.1) rotate(20deg);
+}
+[data-theme="dark"] .btn-theme-toggle {
+    background: rgba(255, 215, 0, 0.15);
+    border-color: rgba(255, 215, 0, 0.35);
+    color: #fde68a;
 }
