@@ -165,17 +165,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mensaje = alerta_error('Crédito no encontrado o ya fue procesado.');
             }
         }
-        // 8. Crear / Editar pregunta de baremo
+        // 8. Baremo Digital: Crear pregunta
         elseif (isset($_POST['crear_pregunta'])) {
-            $pregunta = trim($_POST['pregunta']);
-            $categoria = trim($_POST['categoria']);
-            $orden = (int)$_POST['orden'];
+            $pregunta  = trim($_POST['pregunta'] ?? '');
+            $categoria = trim($_POST['categoria'] ?? '');
+            $orden     = (int)($_POST['orden'] ?? 1);
             if ($pregunta && $categoria) {
-                $stmt = $pdo->prepare("INSERT INTO baremo_preguntas (pregunta, categoria, orden) VALUES (:p, :c, :o) RETURNING id");
-                $stmt->execute([':p' => $pregunta, ':c' => $categoria, ':o' => $orden]);
-                $preg_id = $stmt->fetchColumn();
-                registrar_log($pdo, 'Crear pregunta', 'baremo_preguntas', $preg_id, "Nueva pregunta: " . substr($pregunta, 0, 50));
-                $mensaje = alerta_success('Pregunta agregada al Baremo Digital.');
+                try {
+                    $preg_id = Baremo::crearPregunta($pdo, $pregunta, $categoria, $orden);
+                    registrar_log($pdo, 'Crear pregunta baremo', 'baremo_preguntas', $preg_id, "Pregunta añadida: " . substr($pregunta, 0, 60));
+                    $mensaje = alerta_success('Pregunta agregada exitosamente al Baremo Digital.');
+                } catch (Exception $e) {
+                    $mensaje = alerta_error('Error al crear la pregunta: ' . $e->getMessage());
+                }
+            } else {
+                $mensaje = alerta_error('Debe ingresar el texto de la pregunta y la categoría.');
+            }
+        }
+        // 9. Baremo Digital: Editar / Actualizar pregunta
+        elseif (isset($_POST['editar_pregunta'])) {
+            $preg_id   = (int)($_POST['pregunta_id'] ?? 0);
+            $pregunta  = trim($_POST['pregunta'] ?? '');
+            $categoria = trim($_POST['categoria'] ?? '');
+            $orden     = (int)($_POST['orden'] ?? 1);
+            if ($preg_id > 0 && $pregunta && $categoria) {
+                try {
+                    Baremo::actualizarPregunta($pdo, $preg_id, $pregunta, $categoria, $orden);
+                    registrar_log($pdo, 'Editar pregunta baremo', 'baremo_preguntas', $preg_id, "Pregunta #$preg_id modificada");
+                    $mensaje = alerta_success("Pregunta #$preg_id actualizada correctamente en el Baremo Digital.");
+                } catch (Exception $e) {
+                    $mensaje = alerta_error('Error al actualizar la pregunta: ' . $e->getMessage());
+                }
+            } else {
+                $mensaje = alerta_error('Datos incompletos para actualizar la pregunta.');
+            }
+        }
+        // 10. Baremo Digital: Eliminar pregunta
+        elseif (isset($_POST['eliminar_pregunta'])) {
+            $preg_id = (int)($_POST['pregunta_id'] ?? 0);
+            if ($preg_id > 0) {
+                try {
+                    Baremo::eliminarPregunta($pdo, $preg_id);
+                    registrar_log($pdo, 'Eliminar pregunta baremo', 'baremo_preguntas', $preg_id, "Pregunta #$preg_id eliminada");
+                    $mensaje = alerta_success("Pregunta #$preg_id eliminada del Baremo Digital.");
+                } catch (Exception $e) {
+                    $mensaje = alerta_error('Error al eliminar la pregunta: ' . $e->getMessage());
+                }
             }
         }
     }
@@ -326,8 +361,8 @@ require_once __DIR__ . '/../../includes/template_header.php';
                 </div>
                 <div class="dashboard-card-body">
                     <!-- Formulario de nuevo usuario colapsable -->
-                    <div id="form-crear-usuario" style="display:none;background:#f8fafc;padding:20px;border-radius:12px;margin-bottom:24px;border:1px solid #e2e8f0;">
-                        <h4 style="margin-bottom:16px;color:#001a57;">Crear Usuario con Rol Especial</h4>
+                    <div id="form-crear-usuario" style="display:none;padding:20px;border-radius:12px;margin-bottom:24px;border:1px solid var(--border-light);background:var(--bg-glass);">
+                        <h4 style="margin-bottom:16px;color:var(--unefa-navy);">Crear Usuario con Rol Especial</h4>
                         <form method="POST">
                             <?php echo csrf_field(); ?>
                             <input type="hidden" name="crear_usuario" value="1">
@@ -559,7 +594,7 @@ require_once __DIR__ . '/../../includes/template_header.php';
                     <h3>🔓 Llave Maestra: Reapertura de Actas Definitivas</h3>
                 </div>
                 <div class="dashboard-card-body">
-                    <p style="color:#666;font-size:0.85rem;margin-bottom:16px;">
+                    <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px;">
                         Permite a la Dirección de Administración habilitar temporalmente la edición de notas de un acta ya cerrada para la rectificación de calificaciones por parte del docente.
                     </p>
                     <div class="table-responsive">
@@ -632,6 +667,140 @@ require_once __DIR__ . '/../../includes/template_header.php';
                 </div>
             </div>
         </section>
+
+        <!-- ===== MÓDULO: BAREMO DIGITAL ===== -->
+        <section id="modulo-baremo" class="module-section">
+            <div class="dashboard-card">
+                <div class="dashboard-card-header">
+                    <h3>📋 Baremo Digital: Gestión y Modificación de Preguntas</h3>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button class="btn-primary btn-sm" onclick="toggleForm('form-crear-pregunta')">➕ Nueva Pregunta</button>
+                    </div>
+                </div>
+                <div class="dashboard-card-body">
+                    <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:18px;">
+                        Configure las preguntas, criterios evaluativos, categorías y orden del Baremo Digital institucional utilizado para la evaluación de aspirantes y docentes.
+                    </p>
+
+                    <!-- Formulario desplegable para nueva pregunta -->
+                    <div id="form-crear-pregunta" style="display:none;padding:20px;border-radius:12px;margin-bottom:24px;border:1px solid var(--border-light);background:var(--bg-glass);">
+                        <h4 style="margin-bottom:14px;color:var(--unefa-navy);">➕ Agregar Nueva Pregunta al Baremo</h4>
+                        <form method="POST">
+                            <?php echo csrf_field(); ?>
+                            <input type="hidden" name="crear_pregunta" value="1">
+                            <div class="form-grid-3">
+                                <div class="input-group" style="grid-column: span 2;">
+                                    <label>Pregunta / Criterio:</label>
+                                    <input type="text" name="pregunta" placeholder="Ej: ¿Posee publicaciones en revistas indexadas?" required>
+                                </div>
+                                <div class="input-group">
+                                    <label>Categoría:</label>
+                                    <input type="text" name="categoria" list="lista-categorias-baremo" placeholder="Ej: Académica" required>
+                                    <datalist id="lista-categorias-baremo">
+                                        <option value="Académica">
+                                        <option value="Experiencia Docente">
+                                        <option value="Investigación">
+                                        <option value="Producción Intelectual">
+                                        <option value="General">
+                                    </datalist>
+                                </div>
+                                <div class="input-group">
+                                    <label>Orden:</label>
+                                    <input type="number" name="orden" value="<?php echo count($baremo_preguntas) + 1; ?>" min="1" required>
+                                </div>
+                            </div>
+                            <div style="margin-top:14px;display:flex;gap:10px;">
+                                <button type="submit" class="btn-primary btn-sm">Guardar Pregunta</button>
+                                <button type="button" class="btn-secondary btn-sm" onclick="toggleForm('form-crear-pregunta')">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="toolbar-actions">
+                        <div class="search-input-wrapper">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="filtro-baremo" placeholder="Buscar preguntas por texto o categoría..." onkeyup="filtrarTabla('filtro-baremo', 'tabla-baremo')">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table" id="tabla-baremo">
+                            <thead>
+                                <tr>
+                                    <th style="width:50px;">#</th>
+                                    <th style="width:180px;">Categoría</th>
+                                    <th style="width:70px;text-align:center;">Orden</th>
+                                    <th>Pregunta / Criterio Evaluado</th>
+                                    <th style="width:160px;text-align:center;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (count($baremo_preguntas) === 0): ?>
+                                <tr><td colspan="5" class="text-center">No hay preguntas registradas en el Baremo Digital.</td></tr>
+                                <?php else: ?>
+                                <?php foreach ($baremo_preguntas as $bp): ?>
+                                <tr>
+                                    <td><strong><?php echo (int)$bp['id']; ?></strong></td>
+                                    <td><span class="badge badge-navy"><?php echo h($bp['categoria']); ?></span></td>
+                                    <td style="text-align:center;"><strong><?php echo (int)($bp['orden'] ?? 1); ?></strong></td>
+                                    <td><?php echo h($bp['pregunta']); ?></td>
+                                    <td style="text-align:center;">
+                                        <div style="display:inline-flex;gap:6px;">
+                                            <button type="button" class="btn-warning btn-sm" onclick="abrirModalEditarPregunta(<?php echo (int)$bp['id']; ?>, <?php echo htmlspecialchars(json_encode($bp['pregunta']), ENT_QUOTES, 'UTF-8'); ?>, <?php echo htmlspecialchars(json_encode($bp['categoria']), ENT_QUOTES, 'UTF-8'); ?>, <?php echo (int)($bp['orden'] ?? 1); ?>)" title="Modificar pregunta">
+                                                ✏️ Modificar
+                                            </button>
+                                            <form method="POST" style="display:inline;" onsubmit="return confirm('¿Seguro que desea eliminar esta pregunta del Baremo? Las respuestas asociadas se limpiarán.');">
+                                                <?php echo csrf_field(); ?>
+                                                <input type="hidden" name="eliminar_pregunta" value="1">
+                                                <input type="hidden" name="pregunta_id" value="<?php echo (int)$bp['id']; ?>">
+                                                <button type="submit" class="btn-danger btn-sm" title="Eliminar">🗑️</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MODAL PARA MODIFICAR PREGUNTA DEL BAREMO -->
+        <div id="modal-editar-pregunta" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+            <div class="modal-container" style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:16px;width:90%;max-width:580px;box-shadow:0 20px 40px rgba(0,0,0,0.4);overflow:hidden;">
+                <div style="padding:18px 24px;border-bottom:1px solid var(--border-light);display:flex;justify-content:space-between;align-items:center;">
+                    <h3 style="margin:0;font-size:1.1rem;color:var(--unefa-navy);" id="modal-preg-title">✏️ Modificar Pregunta del Baremo</h3>
+                    <button type="button" onclick="cerrarModalEditarPregunta()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-muted);">&times;</button>
+                </div>
+                <form method="POST">
+                    <?php echo csrf_field(); ?>
+                    <input type="hidden" name="editar_pregunta" value="1">
+                    <input type="hidden" id="edit-preg-id" name="pregunta_id" value="">
+                    <div style="padding:24px;display:flex;flex-direction:column;gap:16px;">
+                        <div class="input-group">
+                            <label style="font-weight:600;margin-bottom:6px;display:block;">Texto / Enunciado de la Pregunta:</label>
+                            <textarea id="edit-preg-texto" name="pregunta" rows="3" required style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border-light);font-family:inherit;font-size:0.9rem;resize:vertical;"></textarea>
+                        </div>
+                        <div class="form-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                            <div class="input-group">
+                                <label style="font-weight:600;margin-bottom:6px;display:block;">Categoría:</label>
+                                <input type="text" id="edit-preg-cat" name="categoria" list="lista-categorias-baremo" required style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--border-light);">
+                            </div>
+                            <div class="input-group">
+                                <label style="font-weight:600;margin-bottom:6px;display:block;">Número de Orden:</label>
+                                <input type="number" id="edit-preg-orden" name="orden" min="1" required style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--border-light);">
+                            </div>
+                        </div>
+                    </div>
+                    <div style="padding:16px 24px;border-top:1px solid var(--border-light);display:flex;justify-content:flex-end;gap:10px;">
+                        <button type="button" class="btn-secondary btn-sm" onclick="cerrarModalEditarPregunta()">Cancelar</button>
+                        <button type="submit" class="btn-primary btn-sm">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </main>
 </div>
 
@@ -649,6 +818,21 @@ function filtrarTabla(inputId, tableId) {
         const text = r.textContent.toLowerCase();
         r.style.display = text.includes(query) ? '' : 'none';
     });
+}
+
+function abrirModalEditarPregunta(id, pregunta, categoria, orden) {
+    document.getElementById('edit-preg-id').value = id;
+    document.getElementById('edit-preg-texto').value = pregunta;
+    document.getElementById('edit-preg-cat').value = categoria;
+    document.getElementById('edit-preg-orden').value = orden;
+    document.getElementById('modal-preg-title').textContent = '✏️ Modificar Pregunta #' + id;
+    const modal = document.getElementById('modal-editar-pregunta');
+    modal.style.display = 'flex';
+}
+
+function cerrarModalEditarPregunta() {
+    const modal = document.getElementById('modal-editar-pregunta');
+    modal.style.display = 'none';
 }
 </script>
 

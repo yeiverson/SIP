@@ -11,8 +11,19 @@ class Baremo
      */
     public static function listarPreguntas(PDO $pdo): array
     {
-        $stmt = $pdo->query('SELECT * FROM baremo_preguntas ORDER BY categoria, orden');
+        $stmt = $pdo->query('SELECT * FROM baremo_preguntas ORDER BY categoria, orden, id');
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Obtiene una pregunta específica por su ID.
+     */
+    public static function obtenerPregunta(PDO $pdo, int $id): ?array
+    {
+        $stmt = $pdo->prepare('SELECT * FROM baremo_preguntas WHERE id = :id');
+        $stmt->execute([':id' => $id]);
+        $row = $stmt->fetch();
+        return $row ?: null;
     }
 
     /**
@@ -30,6 +41,46 @@ class Baremo
             ':o' => $orden,
         ]);
         return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Actualiza una pregunta existente en el baremo.
+     */
+    public static function actualizarPregunta(PDO $pdo, int $id, string $pregunta, string $categoria, int $orden): bool
+    {
+        $sql = 'UPDATE baremo_preguntas 
+                SET pregunta = :p, categoria = :c, orden = :o 
+                WHERE id = :id';
+        $stmt = $pdo->prepare($sql);
+        return $stmt->execute([
+            ':p'  => trim($pregunta),
+            ':c'  => trim($categoria),
+            ':o'  => $orden,
+            ':id' => $id,
+        ]);
+    }
+
+    /**
+     * Elimina una pregunta del baremo y sus respuestas asociadas si existen.
+     */
+    public static function eliminarPregunta(PDO $pdo, int $id): bool
+    {
+        try {
+            $pdo->beginTransaction();
+            $stmtResp = $pdo->prepare('DELETE FROM respuestas_baremo WHERE id_pregunta = :id');
+            $stmtResp->execute([':id' => $id]);
+
+            $stmtPreg = $pdo->prepare('DELETE FROM baremo_preguntas WHERE id = :id');
+            $stmtPreg->execute([':id' => $id]);
+
+            $pdo->commit();
+            return true;
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
     }
 
     /**
