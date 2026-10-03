@@ -18,8 +18,8 @@ $css_extra = $css_extra ?? '';
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?php echo h(asset_url('css/tu_estilo.css')); ?>">
-    <link rel="stylesheet" href="<?php echo h(asset_url('css/dashboard.css')); ?>">
+    <link rel="stylesheet" href="<?php echo h(asset_url('css/tu_estilo.css?v=' . @filemtime(__DIR__ . '/../css/tu_estilo.css'))); ?>">
+    <link rel="stylesheet" href="<?php echo h(asset_url('css/dashboard.css?v=' . @filemtime(__DIR__ . '/../css/dashboard.css'))); ?>">
     <link rel="icon" href="<?php echo h(asset_url('imagenes/sip.ico')); ?>">
     <?php if (!empty($css_extra)): ?>
     <style><?php echo $css_extra; ?></style>

@@ -784,8 +784,9 @@
 }
 
 [data-theme="dark"] .stat-card {
-    background: rgba(22, 27, 46, 0.95) !important;
-    border-color: #2d3748 !important;
+    background: #111625 !important;
+    border-color: #232d42 !important;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35) !important;
 }
 
 [data-theme="dark"] .stat-icon {
@@ -795,14 +796,14 @@
 
 /* Tarjetas y Contenedores */
 [data-theme="dark"] .dashboard-card {
-    background: rgba(22, 27, 46, 0.95) !important;
-    border-color: #2d3748 !important;
-    color: #f8fafc !important;
+    background: #111625 !important;
+    border-color: #232d42 !important;
+    color: #ffffff !important;
 }
 
 [data-theme="dark"] .dashboard-card-header {
-    background: #161b2e !important;
-    border-bottom-color: #2d3748 !important;
+    background: #161d31 !important;
+    border-bottom: 1px solid #232d42 !important;
 }
 
 [data-theme="dark"] .dashboard-card-header h3 {
@@ -810,28 +811,52 @@
 }
 
 [data-theme="dark"] .dashboard-card-body {
-    color: #f8fafc !important;
+    background: #111625 !important;
+    color: #ffffff !important;
 }
 
 /* Tablas con texto blanco y alto contraste */
 [data-theme="dark"] .data-table {
-    background: #161b2e !important;
-    color: #f8fafc !important;
+    background: #111625 !important;
+    color: #ffffff !important;
 }
 
 [data-theme="dark"] .data-table th {
-    background: #1e2433 !important;
-    color: #ffffff !important;
-    border-color: #2d3748 !important;
+    background: #161d31 !important;
+    color: #93c5fd !important;
+    border-color: #232d42 !important;
+    font-weight: 700 !important;
 }
 
 [data-theme="dark"] .data-table td {
-    color: #f1f5f9 !important;
-    border-color: #2d3748 !important;
+    color: #ffffff !important;
+    border-color: #232d42 !important;
+    background: transparent !important;
+}
+
+[data-theme="dark"] .data-table td * {
+    color: inherit;
 }
 
 [data-theme="dark"] .data-table td strong {
     color: #ffffff !important;
+}
+
+[data-theme="dark"] .data-table td code {
+    background: #1e293b !important;
+    color: #93c5fd !important;
+}
+
+[data-theme="dark"] .data-table td span.badge {
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .data-table tbody tr {
+    background: #111625 !important;
+}
+
+[data-theme="dark"] .data-table tbody tr:nth-child(even) {
+    background: #141a2c !important;
 }
 
 [data-theme="dark"] .data-table tbody tr:hover {
