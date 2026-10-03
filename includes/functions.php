@@ -373,3 +373,28 @@ function render_paginacion(int $total, int $pagina_actual, int $por_pagina = 15,
 
     return $html;
 }
+
+/**
+ * Retorna el nombre en español del día de la semana (1 = Lunes, 7 = Domingo).
+ */
+function nombre_dia_semana(int $dia): string {
+    $dias = [
+        1 => 'Lunes',
+        2 => 'Martes',
+        3 => 'Miércoles',
+        4 => 'Jueves',
+        5 => 'Viernes',
+        6 => 'Sábado',
+        7 => 'Domingo',
+    ];
+    return $dias[$dia] ?? 'Día ' . $dia;
+}
+
+/**
+ * Formatea un rango horario en formato legible de 12 horas con AM/PM.
+ */
+function formatear_rango_horario(string $horaInicio, string $horaFin): string {
+    $ini = date('h:i A', strtotime($horaInicio));
+    $fin = date('h:i A', strtotime($horaFin));
+    return $ini . ' - ' . $fin;
+}

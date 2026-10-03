@@ -80,7 +80,43 @@ $stmtSecc = $pdo->prepare("SELECT sec.*, asig.nombre as materia_nombre, asig.cod
 $stmtSecc->execute([':prof' => $docente_id]);
 $secciones = $stmtSecc->fetchAll();
 
-$titulo = 'Carga Académica y Calificaciones';
+// Obtener todos los horarios asignados al docente
+$stmtHor = $pdo->prepare("SELECT h.*, sec.seccion, sec.aula, sec.periodo,
+                                 asig.nombre as materia_nombre, asig.codigo as materia_codigo, asig.uc,
+                                 pl.nombre as plan_nombre, s.nombre as sede_nombre,
+                                 (SELECT COUNT(*) FROM inscripciones i WHERE i.seccion_id = sec.id AND i.estatus = 'Formalizada') as total_alumnos
+                          FROM horarios h
+                          JOIN secciones sec ON sec.id = h.seccion_id
+                          JOIN asignaturas asig ON asig.codigo = sec.asignatura_codigo
+                          JOIN plan_estudios pl ON pl.id = sec.plan_id
+                          JOIN sedes s ON s.id = sec.sede_id
+                          WHERE sec.profesor_id = :prof AND sec.activa = true
+                          ORDER BY h.dia_semana, h.hora_inicio");
+$stmtHor->execute([':prof' => $docente_id]);
+$horarios_docente = $stmtHor->fetchAll();
+
+// Mapear horarios por sección y por día
+$horarios_por_seccion = [];
+$horarios_por_dia = [1 => [], 2 => [], 3 => [], 4 => [], 5 => [], 6 => []];
+$dias_activos = [];
+$minutos_totales = 0;
+
+foreach ($horarios_docente as $hd) {
+    $horarios_por_seccion[$hd['seccion_id']][] = $hd;
+    $d = (int)$hd['dia_semana'];
+    if (isset($horarios_por_dia[$d])) {
+        $horarios_por_dia[$d][] = $hd;
+    }
+    $dias_activos[$d] = true;
+    $t_ini = strtotime($hd['hora_inicio']);
+    $t_fin = strtotime($hd['hora_fin']);
+    if ($t_fin > $t_ini) {
+        $minutos_totales += ($t_fin - $t_ini) / 60;
+    }
+}
+$horas_semanales = round($minutos_totales / 60, 1);
+
+$titulo = 'Carga Académica y Horarios | Docente';
 require_once __DIR__ . '/../../includes/template_header.php';
 ?>
 <div class="dashboard-container">
@@ -94,7 +130,8 @@ require_once __DIR__ . '/../../includes/template_header.php';
             <p>Prof. <?php echo h($nombre_docente); ?></p>
         </div>
         <nav class="sidebar-menu">
-            <a href="dashboard.php" class="active"><span>📅 Carga Académica</span></a>
+            <a href="dashboard.php" class="active" data-modulo="inicio"><span>📚 Mis Asignaturas y Actas</span></a>
+            <a href="#modulo-horario" data-modulo="horario"><span>📅 Mi Horario de Clases</span></a>
             <a href="../../controlador/cerrar_sesion.php" class="logout-btn"><span>🚪 Cerrar Sesión</span></a>
         </nav>
     </aside>
@@ -133,6 +170,7 @@ require_once __DIR__ . '/../../includes/template_header.php';
             </div>
         </div>
 
+        <section id="modulo-inicio" class="module-section">
         <?php if (count($secciones) === 0): ?>
             <div class="alert alert-info">Actualmente no posee asignaturas vinculadas a su perfil para este ciclo académico. Si requiere una asignación, comuníquese con su Coordinador de Programa.</div>
         <?php else: ?>
@@ -159,9 +197,19 @@ require_once __DIR__ . '/../../includes/template_header.php';
                     <div class="dashboard-card-header">
                         <div>
                             <h3><?php echo h($sec['materia_nombre']); ?> (<?php echo h($sec['materia_codigo']); ?>)</h3>
-                            <span style="font-size:0.75rem;color:#64748b;">
+                            <span style="font-size:0.75rem;color:var(--text-muted);">
                                 <?php echo h($sec['plan_nombre']); ?> &middot; <?php echo h($sec['sede_nombre']); ?> &middot; Sección: <strong><?php echo h($sec['seccion']); ?></strong> &middot; <?php echo $sec['uc']; ?> UC &middot; Aula: <?php echo h($sec['aula'] ?: 'Virtual'); ?>
                             </span>
+                            <?php if (!empty($horarios_por_seccion[$sec['id']])): ?>
+                                <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
+                                    <?php foreach ($horarios_por_seccion[$sec['id']] as $sh): ?>
+                                        <span class="badge-horario">
+                                            📅 <?php echo nombre_dia_semana((int)$sh['dia_semana']); ?>: <?php echo formatear_rango_horario($sh['hora_inicio'], $sh['hora_fin']); ?>
+                                            <?php if (!empty($sh['aula'])): ?> &middot; Aula: <?php echo h($sh['aula']); ?><?php endif; ?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                         <div style="display:flex;align-items:center;gap:10px;">
                             <span class="badge <?php echo $definitiva ? 'badge-success' : 'badge-warning'; ?>">
@@ -217,7 +265,7 @@ require_once __DIR__ . '/../../includes/template_header.php';
                                                         <span class="badge badge-danger">Inasistente</span>
                                                     <?php elseif ($alu['nota'] !== null): ?>
                                                         <span class="badge <?php echo $alu['nota'] >= 14 ? 'badge-success' : 'badge-danger'; ?>">
-                                                            <?php echo $alu['nota'] >= 14 ? 'Aprobado (' . $alu['nota'] . ')' : 'Reprobado (' . $alu['nota'] . ')'; ?>
+                                                             <?php echo $alu['nota'] >= 14 ? 'Aprobado (' . $alu['nota'] . ')' : 'Reprobado (' . $alu['nota'] . ')'; ?>
                                                         </span>
                                                     <?php else: ?>
                                                         <span style="color:#94a3b8;font-size:0.75rem;">Pendiente</span>
@@ -245,6 +293,143 @@ require_once __DIR__ . '/../../includes/template_header.php';
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
+        </section>
+
+        <!-- ===== MÓDULO: HORARIO DE CLASES DOCENTE ===== -->
+        <section id="modulo-horario" class="module-section">
+            <div class="dashboard-card">
+                <div class="dashboard-card-header">
+                    <div>
+                        <h3>📅 Mi Cronograma y Horario Semanal de Clases</h3>
+                        <p style="font-size:0.85rem;color:var(--text-muted);margin:4px 0 0 0;">
+                            Distribución de bloques horarios, aulas asignadas y carga académica semanal.
+                        </p>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn-outline btn-sm" onclick="window.print()">🖨️ Imprimir Horario</button>
+                    </div>
+                </div>
+                <div class="dashboard-card-body">
+                    <!-- Resumen de Horario -->
+                    <div class="stats-grid" style="margin-bottom:24px;">
+                        <div class="stat-card">
+                            <div class="stat-icon">⏱️</div>
+                            <div class="stat-details">
+                                <span class="stat-val"><?php echo $horas_semanales; ?> h</span>
+                                <span class="stat-lbl">Horas Académicas / Sem</span>
+                            </div>
+                        </div>
+                        <div class="stat-card success">
+                            <div class="stat-icon">📅</div>
+                            <div class="stat-details">
+                                <span class="stat-val"><?php echo count(array_filter($horarios_por_dia)); ?></span>
+                                <span class="stat-lbl">Días de Clase Asignados</span>
+                            </div>
+                        </div>
+                        <div class="stat-card info">
+                            <div class="stat-icon">🔢</div>
+                            <div class="stat-details">
+                                <span class="stat-val"><?php echo count($horarios_docente); ?></span>
+                                <span class="stat-lbl">Bloques de Horario</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <?php if (empty($horarios_docente)): ?>
+                        <div class="alert alert-info">
+                            No se han configurado bloques de horarios para sus secciones en este período. Si requiere programar sus horarios, comuníquese con la Coordinación de Programa.
+                        </div>
+                    <?php else: ?>
+                        <!-- Grilla Visual de Horario Semanal -->
+                        <h4 style="margin-bottom:12px;font-weight:600;">🗓️ Vista Semanal</h4>
+                        <div class="schedule-timetable">
+                            <?php 
+                            $dias_semana_nombres = [
+                                1 => 'Lunes',
+                                2 => 'Martes',
+                                3 => 'Miércoles',
+                                4 => 'Jueves',
+                                5 => 'Viernes',
+                                6 => 'Sábado'
+                            ];
+                            foreach ($dias_semana_nombres as $dia_num => $dia_nombre):
+                                $bloques = $horarios_por_dia[$dia_num] ?? [];
+                            ?>
+                            <div class="schedule-day-col">
+                                <div class="schedule-day-header">
+                                    <span class="day-name"><?php echo $dia_nombre; ?></span>
+                                    <span class="day-badge"><?php echo count($bloques); ?></span>
+                                </div>
+                                <div class="schedule-day-body">
+                                    <?php if (empty($bloques)): ?>
+                                        <div class="schedule-empty-slot">Sin clases</div>
+                                    <?php else: ?>
+                                        <?php foreach ($bloques as $b): ?>
+                                            <div class="schedule-item-card">
+                                                <div class="schedule-item-time">
+                                                    ⏰ <?php echo formatear_rango_horario($b['hora_inicio'], $b['hora_fin']); ?>
+                                                </div>
+                                                <div class="schedule-item-subject">
+                                                    <?php echo h($b['materia_nombre']); ?>
+                                                </div>
+                                                <div class="schedule-item-meta">
+                                                    <span>Sec: <strong><?php echo h($b['seccion']); ?></strong></span>
+                                                    <span>Aula: <strong><?php echo h($b['aula'] ?: 'Virtual'); ?></strong></span>
+                                                </div>
+                                                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">
+                                                    👥 <?php echo $b['total_alumnos']; ?> estudiantes
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <!-- Tabla Detallada -->
+                        <h4 style="margin-top:32px;margin-bottom:12px;font-weight:600;">📋 Detalle de Bloques Horarios</h4>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Día</th>
+                                        <th>Horario</th>
+                                        <th>Asignatura</th>
+                                        <th>Sección</th>
+                                        <th>Aula</th>
+                                        <th>Estudiantes</th>
+                                        <th>Programa</th>
+                                        <th>Sede</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($horarios_docente as $hd): ?>
+                                    <tr>
+                                        <td><strong><?php echo nombre_dia_semana((int)$hd['dia_semana']); ?></strong></td>
+                                        <td>
+                                            <span class="badge-horario">
+                                                <?php echo formatear_rango_horario($hd['hora_inicio'], $hd['hora_fin']); ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <strong><?php echo h($hd['materia_nombre']); ?></strong>
+                                            <small style="color:var(--text-muted);display:block;"><?php echo h($hd['materia_codigo']); ?> &middot; <?php echo $hd['uc']; ?> UC</small>
+                                        </td>
+                                        <td>Sec. <?php echo h($hd['seccion']); ?></td>
+                                        <td><span class="badge badge-navy"><?php echo h($hd['aula'] ?: 'Virtual'); ?></span></td>
+                                        <td><?php echo $hd['total_alumnos']; ?> formalizados</td>
+                                        <td><small><?php echo h($hd['plan_nombre']); ?></small></td>
+                                        <td><small><?php echo h($hd['sede_nombre']); ?></small></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </section>
     </main>
 </div>
 
